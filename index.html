@@ -99,6 +99,12 @@ tr:last-child td{border-bottom:none}
 th.num,td.num{text-align:right}
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--panel-2)}
+.ic{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-2);overflow:hidden}
+.ic img{max-width:26px;max-height:26px;image-rendering:pixelated}
+.ic-tile{font-family:var(--font-display);font-weight:600;font-size:12px;color:var(--ink-3)}
+.ic-lg{width:40px;height:40px;background:color-mix(in srgb, var(--panel) 92%, transparent)}
+.ic-lg img{max-width:36px;max-height:36px}
+.shop .tname{display:flex;align-items:center;gap:8px}
 .cell-kind{padding:4px 6px;font-size:13px}
 .cell-price{width:120px;text-align:right;font-family:var(--font-num);font-size:13px;padding:5px 8px}
 .cell-price.empty{border-color:var(--warn);background:var(--warn-soft)}
@@ -454,7 +460,7 @@ function viewRaw(){
   <p class="meta" style="margin:0">${kindHelp[UI.rawKind]}</p>
   <div class="tablewrap"><table><thead><tr><th>Item</th><th class="num">Market price</th><th>NPC reference</th><th>Used in</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>
   ${rows.map(i=>{const used=IDX.usedBy.get(i.id)||[];const armed=UI.confirm==='item:'+i.id;
-    return `<tr><td><div style="display:flex;align-items:center;gap:6px"><input class="cell-name" id="nm-${i.id}" data-id="${i.id}" value="${esc(i.name)}" aria-label="Name">${exampleChip(i)}</div></td>
+    return `<tr><td><div style="display:flex;align-items:center;gap:6px">${icon(i.id)}<input class="cell-name" id="nm-${i.id}" data-id="${i.id}" value="${esc(i.name)}" aria-label="Name">${exampleChip(i)}</div></td>
     <td class="num"><input class="cell-price ${i.price==null&&used.length?'empty':''}" id="pr-${i.id}" data-id="${i.id}" value="${i.price==null?'':fmt(i.price)}" placeholder="Set price" inputmode="decimal" aria-label="Price of ${esc(i.name)}"></td>
     <td>${npcInfo(i)}</td>
     <td><div class="chips">${used.slice(0,3).map(r=>`<span class="chip link" data-act="open-recipe" data-id="${r.id}">${esc(itemName(r.outputId))}</span>`).join('')}${used.length>3?`<span class="chip">+${used.length-3}</span>`:''}${used.length?'':'<span class="meta">Not used yet</span>'}</div></td>
@@ -490,6 +496,11 @@ function materialPlan(r,n,mode){
 const lvlOk=r=>{const l=Number(r.level)||0;return l>=UI.lvMin&&l<=UI.lvMax};
 function levelPicker(){const o=v=>[1,2,3,4,5,6,7,8,9,10].map(i=>`<option value="${i}" ${v===i?'selected':''}>${i}</option>`).join('');
   return `<label class="field" style="flex-direction:row;align-items:center;gap:6px"><span>Level</span><select id="lvMin" aria-label="Lowest profession level">${o(UI.lvMin)}</select><span class="meta">to</span><select id="lvMax" aria-label="Highest profession level">${o(UI.lvMax)}</select></label>`}
+/* Item icons from maplestory.io (GMS v83 data). Classic-only items have no icon there and get a lettered tile. */
+const NO_ICON=new Set([3000002, 3000003, 3000005, 3000006, 3000028, 3000029, 3000031, 3000032, 3020001, 3020003, 3030000, 3030001, 3030002, 3030003, 3030004, 3030005, 4003006, 4003007, 4003008, 4003009, 4003010, 4003011, 4003012, 4003013, 4003014, 4010100, 4010101, 4010102, 4010103, 4010104, 4010105, 4010106, 4010107, 4020100, 4020101, 4020102, 4020103, 4020104, 4020105, 4020106, 4020107, 4020108]);
+function icon(id,cls){const n=/^i(\d{7})$/.exec(id||'');const name=itemName(id);const letter=esc((name||'?').trim()[0]||'?');
+  if(!n||NO_ICON.has(+n[1]))return `<span class="ic ic-tile ${cls||''}" aria-hidden="true">${letter}</span>`;
+  return `<span class="ic ${cls||''}" aria-hidden="true"><img src="https://maplestory.io/api/GMS/83/item/${n[1]}/icon" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('ic-tile');this.parentNode.textContent='${letter}'"></span>`}
 function roleOf(it){if(!it)return 'product';if(it.role)return it.role;return /^i4\d{6}$/.test(it.id)?'material':'product'}
 function buyVsCraft(r){const c=craftCost(r);const it=S.items.get(r.outputId);const market=it&&it.price!=null?it.price:null;const complete=c.missing.size===0&&!c.cycle;
   const save=market==null||!complete?null:market-c.perUnit;
@@ -503,7 +514,7 @@ function viewCraftable(){
   const profs=['All',...PROFESSIONS.filter(p=>activeRecipes().some(r=>r.profession===p))];
   const views=`<div class="filters" role="group" aria-label="What to show"><button class="filter" aria-pressed="${view==='product'}" data-act="craft-view" data-view="product">Items to sell <span class="mono">${nProd}</span></button><button class="filter" aria-pressed="${view==='material'}" data-act="craft-view" data-view="material">Crafting materials <span class="mono">${nMat}</span></button></div>`;
   const roleBtn=r=>`<button class="btn small ghost" data-act="set-role" data-id="${r.outputId}" data-role="${view==='product'?'material':'product'}" title="${view==='product'?'Treat as a crafting material: compare buy vs craft instead of profit':'Treat as an item you sell: show profit'}">${view==='product'?'Is a material':'Is for sale'}</button>`;
-  const actions=r=>`<td class="num" style="white-space:nowrap">${roleBtn(r)}<button class="btn small ghost" data-act="make-raw" data-id="${r.outputId}" title="Treat as bought instead of crafted">Move to raw</button></td>`;
+  const actions=r=>'';
   const toolbar=sortOpts=>`${views}<div class="toolbar"><div class="left"><input type="search" class="search" id="craftQ" placeholder="Search items" value="${esc(UI.craftQ)}" aria-label="Search craftable items">
     <div class="filters">${profs.map(p=>`<button class="filter" aria-pressed="${UI.prof===p}" data-act="prof" data-prof="${esc(p)}">${esc(p)}</button>`).join('')}</div></div>
     <div class="right">${levelPicker()}${sortOpts}<button class="btn primary" data-act="new-recipe">New recipe</button></div></div>`;
@@ -513,25 +524,25 @@ function viewCraftable(){
       .sort((a,b)=>UI.matSort==='name'?a.it.name.localeCompare(b.it.name):b.used-a.used||a.it.name.localeCompare(b.it.name));
     return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="matSort">${[['used','Most used'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.matSort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
     <p class="meta" style="margin:0">Materials you make for other recipes, like ingots and Processed Leather. You don't sell these, so instead of profit this compares the cost of one unit crafted vs bought. Recipes that use them take the cheaper option.</p>
-    <div class="tablewrap"><table><thead><tr><th>Material</th><th>Profession</th><th class="num">Craft cost (each)</th><th class="num">Market price (each)</th><th class="num">Crafting saves</th><th>Best option</th><th>Used in</th><th></th></tr></thead><tbody>
+    <div class="tablewrap"><table><thead><tr><th>Material</th><th>Profession</th><th class="num">Craft cost (each)</th><th class="num">Market price (each)</th><th class="num">Crafting saves</th><th>Best option</th><th>Used in</th></tr></thead><tbody>
     ${rows.map(({r,it,v,used})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
-      <td><span class="itemname">${esc(recipeLabel(r))}</span>${yieldOf(r)>1?` <span class="meta">makes ${yieldOf(r)}</span>`:''}</td>
+      <td><div class="tname">${icon(r.outputId)}<span class="itemname">${esc(recipeLabel(r))}</span>${yieldOf(r)>1?` <span class="meta">makes ${yieldOf(r)}</span>`:''}</div></td>
       <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
       <td class="num">${v.complete?fmtUnit(v.each):'—'}</td>
       ${priceCell(it,'Market price')}
       <td class="num profit ${v.save==null?'':v.save>=0?'pos':'neg'}">${v.save==null?'—':signed(v.save)}</td>
       <td>${verdictChip(v)}</td>
       <td class="meta">${used} recipe${used===1?'':'s'}</td>
-      ${actions(r)}</tr>`).join('')||'<tr><td colspan="8" class="meta">No materials match.</td></tr>'}
+      ${actions(r)}</tr>`).join('')||'<tr><td colspan="7" class="meta">No materials match.</td></tr>'}
     </tbody></table></div>`;
   }
   let rows=base.filter(r=>roleOf(S.items.get(r.outputId))==='product').map(r=>({r,it:S.items.get(r.outputId),e:econ(r)}));
   const key=UI.sort;const nv=v=>v==null||!isFinite(v)?-Infinity:v;
   rows.sort((a,b)=>key==='name'?(a.it?.name||'').localeCompare(b.it?.name||''):key==='level'?(Number(b.r.level)||0)-(Number(a.r.level)||0):key==='margin'?nv(b.e.margin)-nv(a.e.margin):key==='cost'?a.e.cost-b.e.cost:nv(b.e.profit)-nv(a.e.profit));
   return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="sort">${[['profit','Profit'],['margin','Margin'],['level','Level (high first)'],['cost','Craft cost'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
-  <div class="tablewrap"><table><thead><tr><th>Item</th><th>Profession</th><th class="num">Craft cost</th><th class="num">Sells for (each)</th><th class="num">Profit / craft</th><th class="num">Margin</th><th>Status</th><th></th></tr></thead><tbody>
+  <div class="tablewrap"><table><thead><tr><th>Item</th><th>Profession</th><th class="num">Craft cost</th><th class="num">Sells for (each)</th><th class="num">Profit / craft</th><th class="num">Margin</th><th>Status</th></tr></thead><tbody>
   ${rows.map(({r,it,e})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
-    <td><span class="itemname">${esc(recipeLabel(r))}</span>${e.y>1?` <span class="meta">makes ${e.y}</span>`:''}</td>
+    <td><div class="tname">${icon(r.outputId)}<span class="itemname">${esc(recipeLabel(r))}</span>${e.y>1?` <span class="meta">makes ${e.y}</span>`:''}</div></td>
     <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
     <td class="num">${fmt(e.cost)}</td>
     ${priceCell(it,'Sell price')}
@@ -539,7 +550,7 @@ function viewCraftable(){
     <td class="num ${e.margin==null?'':e.margin>=0?'pos':'neg'}">${fmtPct(e.margin)}</td>
     <td>${e.cycle?'<span class="chip bad">Loop in recipe</span>':!e.complete?`<span class="chip warn">${e.missing.size} price${e.missing.size>1?'s':''} missing</span>`:e.sell==null?'<span class="chip warn">No sell price</span>':e.profit>=0?'<span class="chip good">Profitable</span>':'<span class="chip bad">Loses mesos</span>'}</td>
     ${actions(r)}
-  </tr>`).join('')||'<tr><td colspan="8" class="meta">No items match.</td></tr>'}
+  </tr>`).join('')||'<tr><td colspan="7" class="meta">No items match.</td></tr>'}
   </tbody></table></div>
   <p class="meta">Profit per craft = sell price × yield${Number(S.settings.feePct)?` − ${S.settings.feePct}% fee`:''} − craft cost. Materials inside each recipe are costed at whichever is cheaper, buying or crafting.</p>`;
 }
@@ -553,7 +564,7 @@ function viewRecipes(){
     <div style="display:flex;gap:8px"><input type="search" id="recQ" placeholder="Search recipes" value="${esc(UI.recQ)}" style="flex:1" aria-label="Search recipes"><button class="btn primary" data-act="new-recipe">New</button></div>
     <div style="display:flex;gap:8px;align-items:center">${levelPicker()}</div>
     <select id="recProf" aria-label="Profession">${['All',...PROFESSIONS].map(p=>`<option value="${p}" ${UI.recProf===p?'selected':''}>${p==='All'?'All professions':p}</option>`).join('')}</select>
-    <div class="list">${list.map(r=>{const e=econ(r);return `<button class="recbtn" data-act="sel-recipe" data-id="${r.id}" aria-current="${!UI.draft&&UI.sel===r.id}"><span><span class="itemname">${esc(recipeLabel(r))}</span><br><span class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</span></span>${roleOf(S.items.get(r.outputId))==='material'?`<span class="r"><span class="num">${fmtUnit(buyVsCraft(r).each)}</span><span class="meta">each</span></span>`:`<span class="r"><span class="num ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</span><span class="meta">profit</span></span>`}</button>`}).join('')||'<div class="meta" style="padding:10px">No recipes match.</div>'}</div>
+    <div class="list">${list.map(r=>{const e=econ(r);return `<button class="recbtn" data-act="sel-recipe" data-id="${r.id}" aria-current="${!UI.draft&&UI.sel===r.id}"><span class="tname" style="align-items:flex-start">${icon(r.outputId)}<span><span class="itemname">${esc(recipeLabel(r))}</span><br><span class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</span></span></span>${roleOf(S.items.get(r.outputId))==='material'?`<span class="r"><span class="num">${fmtUnit(buyVsCraft(r).each)}</span><span class="meta">each</span></span>`:`<span class="r"><span class="num ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</span><span class="meta">profit</span></span>`}</button>`}).join('')||'<div class="meta" style="padding:10px">No recipes match.</div>'}</div>
     <button class="btn" data-act="open-import">Import recipes</button>
   </aside><section class="detail">${UI.draft?viewEditor():UI.sel?viewDetail(S.recipes.get(UI.sel)):''}</section></div>`;
 }
@@ -566,7 +577,7 @@ function treeRows(r,mult,depth,path,out){
     const q=inp.qty*mult;const it=S.items.get(inp.itemId);
     if(inp.optional){out.push(`<tr class="optional ${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px"><span class="twisty-pad"></span>${esc(it?.name)}</div></td><td class="num">${fmtQty(q)}</td><td class="num">—</td><td class="num">—</td><td><span class="chip">additive · not counted</span></td></tr>`);continue}
     const v=unitValue(inp.itemId);const key=path+'>'+inp.itemId;const sub=v.recipe;const can=v.source==='craft'&&sub;const open=can&&UI.expanded.has(key);
-    out.push(`<tr class="${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px">${can?`<button class="twisty" aria-expanded="${open}" aria-label="Show parts of ${esc(it?.name)}" data-act="twisty" data-key="${esc(key)}"></button>`:'<span class="twisty-pad"></span>'}<span class="${depth?'':'itemname'}">${esc(it?.name)}</span>${exampleChip(it)}</div></td>
+    out.push(`<tr class="${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px">${can?`<button class="twisty" aria-expanded="${open}" aria-label="Show parts of ${esc(it?.name)}" data-act="twisty" data-key="${esc(key)}"></button>`:'<span class="twisty-pad"></span>'}${icon(inp.itemId)}<span class="${depth?'':'itemname'}">${esc(it?.name)}</span>${exampleChip(it)}</div></td>
       <td class="num">${fmtQty(q)}</td><td class="num">${v.source==='missing'?'—':fmtUnit(v.value)}</td><td class="num">${v.source==='missing'?'—':fmt(q*v.value)}</td><td>${srcChip(v)}</td></tr>`);
     if(open)treeRows(sub,q/yieldOf(sub),depth+1,key,out);
   }
@@ -579,8 +590,8 @@ function viewDetail(r){
   const armed=UI.confirm==='recipe:'+r.id;
   const hasCrafted=(r.inputs||[]).some(i=>!i.optional&&unitValue(i.itemId).source==='craft');
   const alts=(IDX.byOutput.get(r.outputId)||[]).filter(x=>x.id!==r.id);const best=unitValue(r.outputId).recipe;
-  return `<div class="dhead"><div><h2>${esc(it?.name)}</h2><div class="meta">${esc(r.profession||'No profession')} · Level ${esc(r.level??'—')} · Makes ${e.y} per craft${it?.npcBuy!=null?` · NPC sells for ${fmt(it.npcBuy)}`:''}${it?.vendorSell!=null?` · vendor buys for ${fmt(it.vendorSell)}`:''}</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" data-act="make-raw" data-id="${r.outputId}">Move to raw</button><button class="btn small" data-act="edit-recipe" data-id="${r.id}">Edit recipe</button><button class="btn small ${armed?'danger armed':''}" data-act="del-recipe" data-id="${r.id}">${armed?'Confirm delete':'Delete'}</button></div></div>
+  return `<div class="dhead"><div><h2 style="display:flex;align-items:center;gap:10px">${icon(r.outputId,'ic-lg')}${esc(it?.name)}</h2><div class="meta">${esc(r.profession||'No profession')} · Level ${esc(r.level??'—')} · Makes ${e.y} per craft${it?.npcBuy!=null?` · NPC sells for ${fmt(it.npcBuy)}`:''}${it?.vendorSell!=null?` · vendor buys for ${fmt(it.vendorSell)}`:''}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" data-act="edit-recipe" data-id="${r.id}">Edit recipe</button><button class="btn small ${armed?'danger armed':''}" data-act="del-recipe" data-id="${r.id}">${armed?'Confirm delete':'Delete'}</button></div></div>
   ${alts.length?`<div class="notice info">${esc(it?.name)} has ${alts.length+1} recipes. ${best&&best.id===r.id?'This is the cheapest one right now, so other recipes use it.':'Other recipes use the cheapest one.'} ${alts.map(x=>`<span class="chip link" data-act="sel-recipe" data-id="${x.id}">from ${esc(itemName((x.inputs.find(i=>!i.optional)||{}).itemId))}</span>`).join(' ')}</div>`:''}
   ${e.cycle?'<div class="notice bad">This recipe uses itself somewhere down the chain. Check the required items.</div>':''}
   ${!e.complete?`<div class="notice">Missing prices: ${[...e.missing].map(id=>`<span class="chip link" data-act="goto-raw" data-name="${esc(itemName(id))}">${esc(itemName(id))}</span>`).join(' ')} Costs below count these as 0.</div>`:''}
@@ -591,7 +602,7 @@ function viewDetail(r){
     <div><span class="label">Market price (each)</span><span class="val"><span class="coin"></span>${v.market==null?'—':fmt(v.market)}</span></div>
     <div><span class="label">Crafting saves (each)</span><span class="val ${v.save==null?'':v.save>=0?'pos':'neg'}">${v.save==null?'—':signed(v.save)}</span></div>
     <div><span class="label">Best option</span><span class="val" style="font-size:14px">${verdictChip(v)}</span></div>
-  </div><p class="meta" style="margin:0">${esc(it?.name)} is a crafting material, so this compares crafting with buying instead of showing profit. <button class="btn small ghost" data-act="set-role" data-id="${it?.id}" data-role="product">I sell this</button></p>`})():`<div class="summary">
+  </div><p class="meta" style="margin:0">${esc(it?.name)} is a crafting material, so this compares crafting with buying instead of showing profit.</p>`})():`<div class="summary">
     <div><span class="label">Craft cost</span><span class="val"><span class="coin"></span>${fmt(e.cost)}</span></div>
     <div><span class="label">Sells for${Number(S.settings.feePct)?' (after fee)':''}</span><span class="val"><span class="coin"></span>${e.revenue==null?'—':fmt(e.revenue)}</span></div>
     <div><span class="label">Profit</span><span class="val ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</span></div>
@@ -603,8 +614,8 @@ function viewDetail(r){
       <tr class="total"><td>Total</td><td></td><td></td><td class="num">${fmt(e.cost)}</td><td></td></tr></tbody></table></div></div>
     <div class="card"><div class="actions"><h3>Materials needed</h3><div class="filters"><button class="filter" aria-pressed="${UI.planMode!=='cheapest'}" data-act="plan-mode" data-mode="raw">Craft from raw</button><button class="filter" aria-pressed="${UI.planMode==='cheapest'}" data-act="plan-mode" data-mode="cheapest">Cheapest plan</button></div></div>
       <div class="meta">${UI.planMode==='cheapest'?'Buys any part that is cheaper to buy, crafts the rest.':'Crafts every part yourself, down to ores, drops and Leather.'} For ${n} craft${n>1?'s':''}, rounded to whole crafts.</div>
-      ${plan.crafts.length?`<h3 style="margin-top:4px">Craft first</h3><div class="shop">${plan.crafts.map(c=>`<div class="row"><span>${esc(itemName(c.id))} <span class="meta">${c.crafts} craft${c.crafts>1?'s':''}${c.extra>0?` · ${fmtQty(c.extra)} left over`:''}</span></span><span class="num">${fmtQty(c.made)}</span></div>`).join('')}</div>`:''}
-      <h3 style="margin-top:4px">Buy or farm</h3><div class="shop">${plan.buy.map(b=>`<div class="row"><span>${esc(itemName(b.id))}</span><span class="num">${fmtQty(b.qty)}${b.price==null?' <span class="chip warn">no price</span>':` <span class="meta">${fmt(b.cost)}</span>`}</span></div>`).join('')}
+      ${plan.crafts.length?`<h3 style="margin-top:4px">Craft first</h3><div class="shop">${plan.crafts.map(c=>`<div class="row"><span class="tname">${icon(c.id)}${esc(itemName(c.id))} <span class="meta">${c.crafts} craft${c.crafts>1?'s':''}${c.extra>0?` · ${fmtQty(c.extra)} left over`:''}</span></span><span class="num">${fmtQty(c.made)}</span></div>`).join('')}</div>`:''}
+      <h3 style="margin-top:4px">Buy or farm</h3><div class="shop">${plan.buy.map(b=>`<div class="row"><span class="tname">${icon(b.id)}${esc(itemName(b.id))}</span><span class="num">${fmtQty(b.qty)}${b.price==null?' <span class="chip warn">no price</span>':` <span class="meta">${fmt(b.cost)}</span>`}</span></div>`).join('')}
       <div class="row"><span><span class="coin"></span>Crafting fees</span><span class="num">${fmt(plan.mesos)}</span></div>
       <div class="row" style="font-weight:700"><span>Total cost${plan.missing?' (some prices missing)':''}</span><span class="num">${fmt(plan.total)}</span></div></div></div>
   </div>`;
