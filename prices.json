@@ -1,0 +1,685 @@
+{
+ "note": "Market prices entered in the Crafting Calculator, layered on top of catalog.json",
+ "exported": "2026-11-02",
+ "items": [
+  {
+   "id": "i1002017",
+   "name": "Metal Koif",
+   "price": 800,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:22:06.213Z"
+  },
+  {
+   "id": "i1002018",
+   "name": "Mithril Koif",
+   "price": 999,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:22:39.148Z"
+  },
+  {
+   "id": "i1002030",
+   "name": "Steel Helmet",
+   "price": 1150,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:25:29.651Z"
+  },
+  {
+   "id": "i1002031",
+   "name": "Mithril Helmet",
+   "price": 1175,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:25:37.332Z"
+  },
+  {
+   "id": "i1002033",
+   "name": "Yellow Metal Gear",
+   "npcBuy": 1900,
+   "price": 1100,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:02.124Z"
+  },
+  {
+   "id": "i1002034",
+   "name": "Blue Metal Gear",
+   "price": 1800,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:12.956Z"
+  },
+  {
+   "id": "i1002036",
+   "name": "Steel Full Helm",
+   "price": 1400,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:19.554Z"
+  },
+  {
+   "id": "i1002037",
+   "name": "Mithril Full Helm",
+   "price": 1500,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:23.516Z"
+  },
+  {
+   "id": "i1002055",
+   "name": "Steel Football Helmet",
+   "price": 3500,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:27.118Z"
+  },
+  {
+   "id": "i1002056",
+   "name": "Mithril Football Helmet",
+   "price": 2999,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:30.790Z"
+  },
+  {
+   "id": "i1002058",
+   "name": "Iron Viking Helm",
+   "price": 3500,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:39.074Z"
+  },
+  {
+   "id": "i1002059",
+   "name": "Mithril Viking Helm",
+   "price": 2999,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:42.473Z"
+  },
+  {
+   "id": "i1002079",
+   "name": "Mithril Sharp Helm",
+   "price": 3499,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:28:16.656Z"
+  },
+  {
+   "id": "i1002080",
+   "name": "Gold Sharp Helm",
+   "price": 3200,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:28:20.704Z"
+  },
+  {
+   "id": "i1002088",
+   "name": "Gold Burgonet Helm",
+   "price": 5000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:28:37.836Z"
+  },
+  {
+   "id": "i1082001",
+   "name": "Juno",
+   "price": 1500,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:25:19.501Z"
+  },
+  {
+   "id": "i1082002",
+   "name": "Steel Fingerless Gloves",
+   "price": 2000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:33.253Z"
+  },
+  {
+   "id": "i1082008",
+   "name": "Black Cat Gloves",
+   "price": 2999,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:49.133Z"
+  },
+  {
+   "id": "i3030000",
+   "name": "Anvil",
+   "price": 90000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:39.647Z"
+  },
+  {
+   "id": "i4000001",
+   "name": "Snail Shell",
+   "price": 15,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:13.474Z",
+   "vendorSell": 1
+  },
+  {
+   "id": "i4000002",
+   "name": "Blue Snail Shell",
+   "price": 12,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:16.731Z",
+   "vendorSell": 2
+  },
+  {
+   "id": "i4000004",
+   "name": "Red Snail Shell",
+   "price": 12,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:49.589Z",
+   "vendorSell": 4
+  },
+  {
+   "id": "i4000005",
+   "name": "Tree Branch",
+   "price": 15,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:42.216Z",
+   "vendorSell": 5
+  },
+  {
+   "id": "i4000006",
+   "name": "Squishy Liquid",
+   "price": 9,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:25.061Z",
+   "vendorSell": 6
+  },
+  {
+   "id": "i4000009",
+   "name": "Orange Mushroom Cap",
+   "price": 15,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:06.980Z",
+   "vendorSell": 8
+  },
+  {
+   "id": "i4000010",
+   "name": "Pig's Ribbon",
+   "price": 29,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:00.812Z",
+   "vendorSell": 10
+  },
+  {
+   "id": "i4000011",
+   "name": "Leaf",
+   "price": 25,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:05.647Z",
+   "vendorSell": 11
+  },
+  {
+   "id": "i4000013",
+   "name": "Green Mushroom Cap",
+   "price": 12,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:01.257Z",
+   "vendorSell": 14
+  },
+  {
+   "id": "i4000014",
+   "name": "Bubbling's Huge Bubble",
+   "price": 15,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:32.776Z",
+   "vendorSell": 15
+  },
+  {
+   "id": "i4000015",
+   "name": "Firewood",
+   "price": 22,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:12.344Z",
+   "vendorSell": 17
+  },
+  {
+   "id": "i4000016",
+   "name": "Blue Mushroom Cap",
+   "price": 35,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:12.203Z",
+   "vendorSell": 19
+  },
+  {
+   "id": "i4000017",
+   "name": "Stirge Wing",
+   "price": 21,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:54.415Z",
+   "vendorSell": 20
+  },
+  {
+   "id": "i4000018",
+   "name": "Jr. Necki Skin",
+   "price": 28,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:21.395Z",
+   "vendorSell": 21
+  },
+  {
+   "id": "i4000023",
+   "name": "Iron Hog's Metal Hoof",
+   "price": 55,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:25.018Z",
+   "vendorSell": 28
+  },
+  {
+   "id": "i4000024",
+   "name": "Fairy's Tentacle",
+   "price": null,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:00.121Z",
+   "vendorSell": 29
+  },
+  {
+   "id": "i4000025",
+   "name": "Ligator Skin",
+   "price": 32,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:35.134Z",
+   "vendorSell": 31
+  },
+  {
+   "id": "i4000027",
+   "name": "Curse Eye Tail",
+   "price": 39,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:37.250Z",
+   "vendorSell": 33
+  },
+  {
+   "id": "i4000028",
+   "name": "Tablecloth",
+   "price": 39,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:27.921Z",
+   "vendorSell": 34
+  },
+  {
+   "id": "i4000032",
+   "name": "Lorang Claw",
+   "price": 42,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:42.012Z",
+   "vendorSell": 38
+  },
+  {
+   "id": "i4000033",
+   "name": "Cursed Doll",
+   "price": 55,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:58.399Z",
+   "vendorSell": 40
+  },
+  {
+   "id": "i4000036",
+   "name": "Drake Skull",
+   "price": 50,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:32.336Z",
+   "vendorSell": 45
+  },
+  {
+   "id": "i4000040",
+   "name": "Clang Claw",
+   "price": 69,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:44.441Z",
+   "vendorSell": 49
+  },
+  {
+   "id": "i4000041",
+   "name": "Croco Skin",
+   "price": null,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:36.811Z",
+   "vendorSell": 52
+  },
+  {
+   "id": "i4000049",
+   "name": "Leather",
+   "price": 100,
+   "priceSource": null,
+   "updatedAt": "2026-11-02T06:55:00Z",
+   "vendorSell": 10
+  },
+  {
+   "id": "i4000050",
+   "name": "Dragon Skin",
+   "price": 220,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:26.668Z",
+   "vendorSell": 200
+  },
+  {
+   "id": "i4000062",
+   "name": "Animal Fur Bundle",
+   "price": 36,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:26.673Z",
+   "vendorSell": 10
+  },
+  {
+   "id": "i4000063",
+   "name": "Fragment of Magic",
+   "price": 75,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:38.638Z",
+   "vendorSell": 10
+  },
+  {
+   "id": "i4000151",
+   "name": "Seedling",
+   "price": 24,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:11.152Z",
+   "vendorSell": 19
+  },
+  {
+   "id": "i4000152",
+   "name": "Wooden Board",
+   "price": 27,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:48.929Z",
+   "vendorSell": 23
+  },
+  {
+   "id": "i4003000",
+   "name": "Screw",
+   "price": 170,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:24:15.420Z",
+   "vendorSell": 1
+  },
+  {
+   "id": "i4003002",
+   "name": "Stiff Feather",
+   "price": 39,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:44.178Z",
+   "vendorSell": 10
+  },
+  {
+   "id": "i4003004",
+   "name": "Piece of Ice",
+   "price": 40000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:12:57.055Z",
+   "vendorSell": 400
+  },
+  {
+   "id": "i4003005",
+   "name": "Fairy Wing",
+   "price": 50000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:42.087Z",
+   "vendorSell": 5000
+  },
+  {
+   "id": "i4010000",
+   "name": "Bronze Ore",
+   "price": 70,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:17:17.919Z",
+   "vendorSell": 20
+  },
+  {
+   "id": "i4010001",
+   "name": "Iron Ore",
+   "price": 300,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:27:10.370Z",
+   "vendorSell": 20
+  },
+  {
+   "id": "i4010002",
+   "name": "Mithril Ore",
+   "price": 125,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:46.049Z",
+   "vendorSell": 40
+  },
+  {
+   "id": "i4010003",
+   "name": "Adamantium Ore",
+   "price": 70,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:33.861Z",
+   "vendorSell": 60
+  },
+  {
+   "id": "i4010004",
+   "name": "Silver Ore",
+   "price": 75,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:19.580Z",
+   "vendorSell": 80
+  },
+  {
+   "id": "i4010005",
+   "name": "Orihalcon Ore",
+   "price": 85,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:54.504Z",
+   "vendorSell": 100
+  },
+  {
+   "id": "i4010006",
+   "name": "Gold Ore",
+   "price": 80,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:20.683Z",
+   "vendorSell": 60
+  },
+  {
+   "id": "i4010100",
+   "name": "Bronze Ingot",
+   "price": 80,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:08:30.384Z",
+   "vendorSell": 100
+  },
+  {
+   "id": "i4010101",
+   "name": "Iron Ingot",
+   "price": 1499,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:22:12.373Z",
+   "vendorSell": 100
+  },
+  {
+   "id": "i4010102",
+   "name": "Mithril Ingot",
+   "price": 850,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:22:26.107Z",
+   "vendorSell": 200
+  },
+  {
+   "id": "i4010103",
+   "name": "Adamantium Ingot",
+   "price": 340,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:25:44.415Z",
+   "vendorSell": 300
+  },
+  {
+   "id": "i4010104",
+   "name": "Silver Ingot",
+   "price": 888,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:26:50.284Z",
+   "vendorSell": 400
+  },
+  {
+   "id": "i4010105",
+   "name": "Orihalcon Ingot",
+   "price": 600,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:28:04.901Z",
+   "vendorSell": 500
+  },
+  {
+   "id": "i4010106",
+   "name": "Gold Ingot",
+   "price": 650,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:25:47.258Z",
+   "vendorSell": 300
+  },
+  {
+   "id": "i4010107",
+   "name": "Moon Rock",
+   "price": 21000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:18:00.778Z",
+   "vendorSell": 2000
+  },
+  {
+   "id": "i4020000",
+   "name": "Garnet Ore",
+   "price": 135,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:14.761Z",
+   "vendorSell": 40
+  },
+  {
+   "id": "i4020001",
+   "name": "Amethyst Ore",
+   "price": 220,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:26.486Z",
+   "vendorSell": 200
+  },
+  {
+   "id": "i4020002",
+   "name": "Aquamarine Ore",
+   "price": 123,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:21.930Z",
+   "vendorSell": 40
+  },
+  {
+   "id": "i4020003",
+   "name": "Emerald Ore",
+   "price": 80,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:07.568Z",
+   "vendorSell": 80
+  },
+  {
+   "id": "i4020004",
+   "name": "Opal Ore",
+   "price": 150,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:50.066Z",
+   "vendorSell": 160
+  },
+  {
+   "id": "i4020005",
+   "name": "Sapphire Ore",
+   "price": 119,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:07.224Z",
+   "vendorSell": 120
+  },
+  {
+   "id": "i4020006",
+   "name": "Topaz Ore",
+   "price": 80,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:21:32.668Z",
+   "vendorSell": 80
+  },
+  {
+   "id": "i4020007",
+   "name": "Diamond Ore",
+   "price": 211,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:20:01.781Z",
+   "vendorSell": 240
+  },
+  {
+   "id": "i4020008",
+   "name": "Black Crystal Ore",
+   "price": 1749,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:19:19.063Z",
+   "vendorSell": 500
+  }
+ ],
+ "recipes": [],
+ "settings": {
+  "valuation": "cheaper",
+  "feePct": 0
+ }
+}

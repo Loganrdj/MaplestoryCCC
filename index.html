@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Crafting Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: crafting-journal ledger — header strip with valuation settings, journal tabs, one working panel per tab (table, or list + recipe detail) */
+:root{
+  --bg:#e8edf2; --panel:#ffffff; --panel-2:#f3f6f9; --line:#d2dbe4; --line-2:#e3e9ef;
+  --ink:#16212c; --ink-2:#4a5a6b; --ink-3:#7a8a9a;
+  --steel:#2b5a86; --steel-soft:#dde9f4; --tab:#d3dde7;
+  --gold:#a8740f; --gold-soft:#f6ebd2; --coin:#e0a92a; --coin-edge:#a87612;
+  --good:#1d7449; --good-soft:#dcefe4; --bad:#b0372f; --bad-soft:#f7e1de; --warn:#8a5f00; --warn-soft:#f7ecc8;
+  --font-display:"Rubik", "Trebuchet MS", system-ui, sans-serif;
+  --font-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151c; --panel:#172029; --panel-2:#1c2733; --line:#2b3947; --line-2:#22303c;
+  --ink:#e5ecf3; --ink-2:#a8b6c4; --ink-3:#7a8a9a;
+  --steel:#82b2de; --steel-soft:#1d3346; --tab:#1f2a35;
+  --gold:#e4b551; --gold-soft:#372c15; --coin:#e0a92a; --coin-edge:#a87612;
+  --good:#5bc290; --good-soft:#163427; --bad:#f08279; --bad-soft:#3b201e; --warn:#e5bc55; --warn-soft:#382e14;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f151c; --panel:#172029; --panel-2:#1c2733; --line:#2b3947; --line-2:#22303c;
+  --ink:#e5ecf3; --ink-2:#a8b6c4; --ink-3:#7a8a9a;
+  --steel:#82b2de; --steel-soft:#1d3346; --tab:#1f2a35;
+  --gold:#e4b551; --gold-soft:#372c15; --coin:#e0a92a; --coin-edge:#a87612;
+  --good:#5bc290; --good-soft:#163427; --bad:#f08279; --bad-soft:#3b201e; --warn:#e5bc55; --warn-soft:#382e14;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:24px;font-weight:700}
+h2{font-size:20px;font-weight:600}
+h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.num,.mono{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:13px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.coin{display:inline-block;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #ffe08a, var(--coin) 60%);box-shadow:inset 0 0 0 1.5px var(--coin-edge);vertical-align:-1px;margin-right:5px;flex:none}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.brand{display:flex;flex-direction:column;gap:4px}
+.brand .sub{color:var(--ink-2)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+input[type=text],input[type=number],input[type=search],select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0}
+input:hover,select:hover,textarea:hover{border-color:var(--ink-3)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:7px 12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--steel);color:var(--steel)}
+.btn.primary{background:var(--steel);border-color:var(--steel);color:var(--panel)}
+.btn.primary:hover{filter:brightness(1.08);color:var(--panel)}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);border-color:var(--bad);color:var(--panel)}
+.btn.small{padding:4px 9px;font-size:13px}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--panel-2);border-color:var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.status{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.dot.local{background:var(--warn)} .dot.loading{background:var(--ink-3)}
+
+/* journal tabs */
+.journal{display:flex;flex-direction:column}
+.tabs{display:flex;gap:4px;padding-left:10px;overflow-x:auto}
+.tab{border:1px solid var(--line);border-bottom:none;background:var(--tab);color:var(--ink-2);padding:9px 16px 8px;border-radius:9px 9px 0 0;cursor:pointer;font-family:var(--font-display);font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center;white-space:nowrap;position:relative;top:1px}
+.tab .count{font-family:var(--font-num);font-size:11px;background:var(--panel);border-radius:10px;padding:1px 7px;color:var(--ink-3)}
+.tab[aria-selected=true]{background:var(--panel);color:var(--steel)}
+.tab[aria-selected=true] .count{background:var(--steel-soft);color:var(--steel)}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-height:340px}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.toolbar .left,.toolbar .right{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{width:220px}
+.addform{display:flex;gap:8px;flex-wrap:wrap}
+.addform input[name=name]{width:200px}
+.addform input[name=price]{width:130px}
+
+/* tables */
+.tablewrap{overflow-x:auto;border:1px solid var(--line-2);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600;padding:9px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+th.num,td.num{text-align:right}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--panel-2)}
+.cell-kind{padding:4px 6px;font-size:13px}
+.cell-price{width:120px;text-align:right;font-family:var(--font-num);font-size:13px;padding:5px 8px}
+.cell-price.empty{border-color:var(--warn);background:var(--warn-soft)}
+.cell-name{border-color:transparent;background:transparent;font-weight:600;width:100%;min-width:140px;padding:5px 6px}
+.cell-name:hover{border-color:var(--line)}
+.itemname{font-weight:600}
+.meta{color:var(--ink-3);font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--panel-2);color:var(--ink-2);border:1px solid var(--line-2);white-space:nowrap}
+.chip.example{background:var(--gold-soft);color:var(--gold);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.chip.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.chip.steel{background:var(--steel-soft);color:var(--steel);border-color:transparent}
+.chip.link{cursor:pointer}
+.chip.link:hover{border-color:var(--steel)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.profit{font-weight:600}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filter{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:4px 11px;cursor:pointer;font-size:13px}
+.filter[aria-pressed=true]{background:var(--steel);border-color:var(--steel);color:var(--panel)}
+
+/* recipes layout */
+.recipes{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+.reclist{display:flex;flex-direction:column;gap:8px;min-width:0}
+.reclist .list{display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;max-height:560px;overflow-y:auto}
+.recbtn{display:flex;justify-content:space-between;gap:8px;align-items:center;text-align:left;border:none;border-bottom:1px solid var(--line-2);background:var(--panel);padding:9px 12px;cursor:pointer}
+.recbtn:last-child{border-bottom:none}
+.recbtn:hover{background:var(--panel-2)}
+.recbtn[aria-current=true]{background:var(--steel-soft)}
+.recbtn[aria-current=true] .itemname{color:var(--steel)}
+.recbtn .r{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.detail{display:flex;flex-direction:column;gap:16px;min-width:0}
+.dhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;padding:14px 16px;border-radius:9px;background:var(--steel);color:var(--panel)}
+.dhead h2{color:var(--panel)}
+.dhead .meta{color:var(--panel);opacity:.8}
+.dhead .btn{background:transparent;color:var(--panel);border-color:color-mix(in srgb, var(--panel) 45%, transparent)}
+.dhead .btn:hover{background:color-mix(in srgb, var(--panel) 15%, transparent)}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line-2);border:1px solid var(--line-2);border-radius:9px;overflow:hidden}
+.summary>div{background:var(--panel);padding:11px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.summary .label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+.summary .val{font-family:var(--font-num);font-size:18px;font-variant-numeric:tabular-nums;display:flex;align-items:center;white-space:nowrap}
+.qtyrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stepper{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.stepper button{border:none;background:var(--panel-2);width:32px;cursor:pointer;font-weight:700}
+.stepper input{border:none;border-radius:0;width:64px;text-align:center;font-family:var(--font-num)}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.card{border:1px solid var(--line-2);border-radius:9px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tree td{padding:7px 10px}
+.tree table{min-width:520px}
+.tname{display:flex;align-items:center;gap:6px}
+.twisty{width:20px;height:20px;border:1px solid var(--line);border-radius:5px;background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0}
+.twisty::before{content:"";width:0;height:0;border-left:5px solid var(--ink-2);border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.twisty[aria-expanded=true]::before{transform:rotate(90deg)}
+.twisty-pad{width:20px;flex:none}
+tr.sub td{background:var(--panel-2)}
+tr.optional td{color:var(--ink-3)}
+tr.total td{font-weight:700;border-top:1px solid var(--line)}
+.shop{display:flex;flex-direction:column}
+.shop .row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line-2)}
+.shop .row:last-child{border-bottom:none}
+.notice{border-radius:8px;padding:10px 12px;background:var(--warn-soft);color:var(--warn);font-size:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.notice.bad{background:var(--bad-soft);color:var(--bad)}
+.notice.info{background:var(--steel-soft);color:var(--steel)}
+
+/* editor */
+.editor{display:flex;flex-direction:column;gap:14px}
+.grid4{display:grid;grid-template-columns:2fr 1.3fr .7fr .7fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.inrows{display:flex;flex-direction:column;gap:6px}
+.inrow{display:grid;grid-template-columns:minmax(0,1fr) 90px auto auto;gap:8px;align-items:center}
+.inrow label.opt{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--ink-2);white-space:nowrap}
+.inhead{display:grid;grid-template-columns:minmax(0,1fr) 90px auto auto;gap:8px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.err{color:var(--bad);font-size:13px}
+
+.empty{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:28px 6px;color:var(--ink-2);max-width:60ch}
+.empty h2{color:var(--ink)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb, var(--ink) 45%, transparent);display:flex;align-items:flex-start;justify-content:center;padding:max(40px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));z-index:30;overflow-y:auto}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:min(720px,100%);padding:20px;display:flex;flex-direction:column;gap:14px}
+.modal textarea{width:100%;min-height:150px;font-family:var(--font-num);font-size:12.5px;resize:vertical}
+.modal pre{margin:0;background:var(--panel-2);border-radius:7px;padding:10px;font-family:var(--font-num);font-size:12px;overflow-x:auto;color:var(--ink-2)}
+.modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.drop{border:1.5px dashed var(--line);border-radius:9px;padding:14px;display:flex;flex-direction:column;gap:8px;background:var(--panel-2)}
+.toast{position:fixed;left:50%;bottom:max(20px, env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13.5px;z-index:40;max-width:calc(100% - 32px)}
+
+@media (max-width:900px){
+  .recipes{grid-template-columns:1fr}
+  .reclist .list{max-height:240px}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid4,.grid3{grid-template-columns:1fr 1fr}
+  .grid4 .wide{grid-column:1 / -1}
+  .modal .row2{grid-template-columns:1fr}
+  .search{width:100%}
+  .addform input[name=name]{width:100%}
+  .sheet{padding:12px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Crafting Calculator</h1>
+      <div class="status" id="status"><span class="dot loading"></span>Loading your ledger…</div>
+    </div>
+    <div class="controls">
+      <label class="field"><span>Value crafted parts at</span>
+        <select id="valuation">
+          <option value="cheaper">Cheaper of craft or buy</option>
+          <option value="craft">Always craft them</option>
+          <option value="market">Market price when set</option>
+        </select>
+      </label>
+      <label class="field"><span>Sale fee %</span>
+        <input type="number" id="feePct" min="0" max="100" step="0.5" style="width:90px" value="0">
+      </label>
+      <button class="btn" data-act="open-import">Import</button>
+      <button class="btn" data-act="export">Export backup</button>
+    </div>
+  </header>
+
+  <section class="journal">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="sheet" id="main"></div>
+  </section>
+</div>
+
+<div class="overlay" id="importModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+    <div class="actions"><h2 id="impTitle">Import recipes or prices</h2><button class="btn ghost" data-act="close-import">Close</button></div>
+    <div class="drop" id="shotBox">
+      <h3>Read a crafting window screenshot</h3>
+      <div class="meta">Upload a screenshot of the Crafting Journal. Claude reads the item, level, mesos and required items, then opens it as a draft recipe for you to check and save.</div>
+      <div><input type="file" id="shotFile" accept="image/*"></div>
+      <div id="shotMsg" class="meta"></div>
+    </div>
+    <div class="drop">
+      <h3>Paste or upload CSV / JSON</h3>
+      <textarea id="importText" placeholder="Paste CSV or JSON here, or choose a file below"></textarea>
+      <div class="actions">
+        <input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,text/csv,application/json">
+        <div style="display:flex;gap:8px"><button class="btn" data-act="fill-example">Use example</button><button class="btn primary" data-act="do-import">Import</button></div>
+      </div>
+      <div id="importMsg" class="meta"></div>
+    </div>
+    <div class="row2">
+      <div class="card"><h3>Recipe CSV</h3><div class="meta">One row per required item. Rows with the same output form one recipe. Unknown items are added to Raw Materials.</div>
+<pre>output,profession,level,yield,mesos,sell_price,ingredient,qty,optional
+Bronze Guardian,Weaponcrafting,7,1,9000,,Bronze Ingot,4,
+Bronze Guardian,Weaponcrafting,7,1,9000,,Screw,21,</pre></div>
+      <div class="card"><h3>Price CSV</h3><div class="meta">Updates the price of each item by name. Prices accept shorthand like 1.2k or 3m. Tab-separated rows pasted from a spreadsheet work too.</div>
+<pre>name,price
+Bronze Ingot,1500
+Processed Leather,300</pre></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const PROFESSIONS=['Smithing','Weaponcrafting','Tailoring','Woodcrafting','Leatherworking','Arcforge','Other'];
+const EXAMPLE_CSV=`output,profession,level,yield,mesos,sell_price,ingredient,qty,optional
+Bronze Guardian,Weaponcrafting,7,1,9000,,Bronze Ingot,4,
+Bronze Guardian,Weaponcrafting,7,1,9000,,Iron Ingot,3,
+Bronze Guardian,Weaponcrafting,7,1,9000,,Processed Leather,50,
+Bronze Guardian,Weaponcrafting,7,1,9000,,Screw,21,`;
+const LSKEY='crafting-calculator-v1';
+
+const S={items:new Map(),recipes:new Map(),settings:{valuation:'cheaper',feePct:0},mode:'loading',stale:false};
+const UI={tab:'craftable',planMode:'raw',lvMin:1,lvMax:10,craftView:'product',matSort:'used',rawKind:'material',rawSort:'used',recProf:'All',rawQ:'',craftQ:'',prof:'All',sort:'profit',recQ:'',sel:null,draft:null,draftErr:'',qty:1,expanded:new Set(),confirm:null};
+let DB=null, SAMPLE=null, DOWNLOADS=null;
+
+/* ---------- utils ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+'-'+Math.random().toString(36).slice(2,10);
+const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+const now=()=>new Date().toISOString();
+function fmt(n){if(n==null||!isFinite(n))return '—';return Math.round(n).toLocaleString('en-US')}
+function fmtUnit(n){if(n==null||!isFinite(n))return '—';if(Math.abs(n)<1000&&!Number.isInteger(n))return n.toLocaleString('en-US',{maximumFractionDigits:1});return fmt(n)}
+function fmtQty(q){if(!isFinite(q))return '—';return Number.isInteger(q)?q.toLocaleString('en-US'):q.toLocaleString('en-US',{maximumFractionDigits:2})}
+function fmtPct(p){if(p==null||!isFinite(p))return '—';return (p*100).toFixed(1)+'%'}
+function signed(n){if(n==null||!isFinite(n))return '—';return (n>0?'+':n<0?'−':'')+fmt(Math.abs(n))}
+function parseNum(v){if(v==null)return null;const s=String(v).trim().toLowerCase().replace(/[,\s_]/g,'').replace(/mesos?$/,'');if(!s)return null;const m=s.match(/^(\d*\.?\d+)([kmb])?$/);if(!m)return NaN;return parseFloat(m[1])*({k:1e3,m:1e6,b:1e9}[m[2]]||1)}
+function ago(iso){if(!iso)return '—';const d=(Date.now()-new Date(iso).getTime())/1000;if(d<60)return 'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';if(d<86400*30)return Math.floor(d/86400)+'d ago';return new Date(iso).toLocaleDateString()}
+let toastT;function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+
+/* ---------- index + cost engine ----------
+   An item can have several recipes; the cheapest complete one is used.
+   Results computed while a loop was being cut short (t = tainted) are not cached. */
+let IDX={byOutput:new Map(),usedBy:new Map()},MEMO=new Map(),STACK=new Set();
+function invalidate(){
+  MEMO=new Map();const byOutput=new Map(),usedBy=new Map();
+  for(const r of S.recipes.values()){if(S.items.get(r.outputId)?.asRaw)continue;if(!byOutput.has(r.outputId))byOutput.set(r.outputId,[]);byOutput.get(r.outputId).push(r);
+    for(const i of r.inputs||[]){if(!usedBy.has(i.itemId))usedBy.set(i.itemId,[]);if(!usedBy.get(i.itemId).includes(r))usedBy.get(i.itemId).push(r)}}
+  for(const a of byOutput.values())a.sort((x,y)=>(Number(x.level)||0)-(Number(y.level)||0));
+  IDX={byOutput,usedBy};
+}
+const itemName=id=>S.items.get(id)?.name||'(deleted item)';
+function itemByName(name){const n=norm(name);for(const it of S.items.values())if(norm(it.name)===n)return it;return null}
+const yieldOf=r=>Math.max(1,Number(r.yield)||1);
+function recipeLabel(r){const n=itemName(r.outputId);const alts=IDX.byOutput.get(r.outputId)||[];if(alts.length<2)return n;const main=(r.inputs||[]).find(i=>!i.optional);return n+' · from '+(main?itemName(main.itemId):'?')}
+function craftCost(r){
+  const key='r:'+r.id;if(MEMO.has(key))return MEMO.get(key);
+  STACK.add(r.outputId);
+  let total=Number(r.mesos)||0;const missing=new Set();let cycle=false,t=false;
+  for(const inp of r.inputs||[]){if(inp.optional)continue;const v=unitValue(inp.itemId);total+=inp.qty*(v.value||0);v.missing.forEach(m=>missing.add(m));if(v.cycle)cycle=true;if(v.t)t=true}
+  STACK.delete(r.outputId);
+  const res={total,perUnit:total/yieldOf(r),missing,cycle,t};if(!cycle&&!t)MEMO.set(key,res);return res;
+}
+function bestCraft(id){
+  let best=null,t=false;
+  for(const r of IDX.byOutput.get(id)||[]){const c=craftCost(r);if(c.t)t=true;if(c.cycle){t=true;continue}
+    const ok=c.missing.size===0;
+    if(!best||(ok&&!best.ok)||(ok===best.ok&&c.perUnit<best.c.perUnit))best={r,c,ok}}
+  if(!best){const r=(IDX.byOutput.get(id)||[])[0];if(!r)return null;return {r,c:craftCost(r),ok:false,t:true}}
+  return {...best,t};
+}
+function unitValue(id){
+  const it=S.items.get(id);const market=it&&it.price!=null?it.price:null;
+  if(STACK.has(id))return market!=null?{value:market,source:'market',missing:new Set(),cycle:true,t:true}:{value:0,source:'missing',missing:new Set([id]),cycle:true,t:true};
+  const key='u:'+id;if(MEMO.has(key))return MEMO.get(key);
+  const b=IDX.byOutput.has(id)?bestCraft(id):null;let res;
+  if(!b){res=market!=null?{value:market,source:'market',missing:new Set(),cycle:false}:{value:0,source:'missing',missing:new Set([id]),cycle:false}}
+  else{
+    const c=b.c;const ok=c.missing.size===0&&!c.cycle;const mode=S.settings.valuation;let useMarket;
+    if(mode==='market')useMarket=market!=null;else if(mode==='craft')useMarket=!ok&&market!=null;else useMarket=market!=null&&(!ok||market<=c.perUnit);
+    res=useMarket?{value:market,source:'market',missing:new Set(),cycle:false,craft:c,recipe:b.r,t:b.t}:{value:c.perUnit,source:'craft',missing:c.missing,cycle:c.cycle,craft:c,recipe:b.r,t:b.t||c.t};
+  }
+  if(!res.t&&!res.cycle)MEMO.set(key,res);return res;
+}
+function econ(r,n=1){
+  const c=craftCost(r);const it=S.items.get(r.outputId);const sell=it&&it.price!=null?it.price:null;const y=yieldOf(r);
+  const fee=Math.min(100,Math.max(0,Number(S.settings.feePct)||0))/100;
+  const cost=c.total*n;const revenue=sell==null?null:sell*y*n*(1-fee);const profit=revenue==null?null:revenue-cost;
+  const complete=c.missing.size===0;
+  return {cost,revenue,profit,margin:profit!=null&&cost>0?profit/cost:null,sell,missing:c.missing,cycle:c.cycle,complete,y};
+}
+function flatten(r,mult,acc,depth=0){
+  acc.mesos+=(Number(r.mesos)||0)*mult;if(depth>25)return acc;
+  for(const inp of r.inputs||[]){if(inp.optional)continue;const q=inp.qty*mult;const v=unitValue(inp.itemId);const sub=v.recipe;
+    if(v.source==='craft'&&sub)flatten(sub,q/yieldOf(sub),acc,depth+1);else acc.items.set(inp.itemId,(acc.items.get(inp.itemId)||0)+q)}
+  return acc;
+}
+
+/* ---------- store ---------- */
+const queues=new Map();
+function queueWrite(path,fn){const p=(queues.get(path)||Promise.resolve()).then(fn).catch(e=>{console.error(e);toast(e&&e.code==='quota_exceeded'?'Storage is full. Delete unused items to save more.':'Could not save a change. Check your connection and try again.')});queues.set(path,p);return p}
+function clean(o){const c={...o};delete c.id;return JSON.parse(JSON.stringify(c))}
+/* The game catalog (catalog.json) is the base layer. Anything you change is saved on top of it as an override; deleting a catalog entry saves a {deleted:true} marker. */
+const BASE={items:new Map(),recipes:new Map()},OV={items:new Map(),recipes:new Map()};let catalogInfo=null,catalogErr='';
+function mergeLayer(b,o){const m=new Map(b);for(const [id,v] of o){if(v.deleted)m.delete(id);else m.set(id,{...(b.get(id)||{}),...v,id})}return m}
+function rebuild(){S.items=mergeLayer(BASE.items,OV.items);S.recipes=mergeLayer(BASE.recipes,OV.recipes);invalidate()}
+function writeDoc(col,id,body){if(DB)return queueWrite(col+'/'+id,()=>DB.doc(col+'/'+id).set(clean(body)));persistLocal()}
+function removeDoc(col,id){if(DB)return queueWrite(col+'/'+id,()=>DB.doc(col+'/'+id).delete());persistLocal()}
+function saveItem(it){OV.items.set(it.id,it);S.items.set(it.id,it);return writeDoc('items',it.id,it)}
+function delItem(id){S.items.delete(id);if(BASE.items.has(id)){OV.items.set(id,{id,deleted:true});return writeDoc('items',id,{deleted:true})}OV.items.delete(id);return removeDoc('items',id)}
+function saveRecipe(r){OV.recipes.set(r.id,r);S.recipes.set(r.id,r);return writeDoc('recipes',r.id,r)}
+function delRecipe(id){S.recipes.delete(id);if(BASE.recipes.has(id)){OV.recipes.set(id,{id,deleted:true});return writeDoc('recipes',id,{deleted:true})}OV.recipes.delete(id);return removeDoc('recipes',id)}
+function saveSettings(){if(DB)return queueWrite('meta/settings',()=>DB.doc('meta/settings').set({...S.settings}));persistLocal()}
+function ensureItem(name){const ex=itemByName(name);if(ex)return ex;const it={id:uid('item'),name:String(name).trim(),price:null,updatedAt:now()};saveItem(it);return it}
+let lsT;function persistLocal(){if(DB)return;clearTimeout(lsT);lsT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify({items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings}))}catch(e){}},200)}
+
+async function loadCatalog(){
+  try{const r=await fetch('catalog.json');if(!r.ok)throw new Error('HTTP '+r.status);const c=await r.json();
+    c.items.forEach(i=>BASE.items.set(i.id,i));c.recipes.forEach(x=>BASE.recipes.set(x.id,x));catalogInfo={source:c.source,fetched:c.fetched,items:c.items.length,recipes:c.recipes.length}}
+  catch(e){catalogErr='The game catalog didn’t load, so only your own items and recipes are shown.'}
+}
+async function loadLocal(){
+  S.mode='local';let raw=null;
+  try{raw=localStorage.getItem(LSKEY)}catch(e){}
+  let d=null;try{d=raw?JSON.parse(raw):null}catch(e){}
+  if(!d){try{const r=await fetch('prices.json');if(r.ok)d=await r.json()}catch(e){}}
+  if(d){(d.items||[]).forEach(i=>OV.items.set(i.id,i));(d.recipes||[]).forEach(r=>OV.recipes.set(r.id,r));if(d.settings)S.settings={...S.settings,...d.settings}}
+  rebuild();render();
+}
+async function initStore(){
+  const use=window.claude&&window.claude.use?n=>window.claude.use(n).catch(()=>null):async()=>null;
+  [DB,SAMPLE,DOWNLOADS]=await Promise.all([use('db'),use('sample'),use('downloads'),loadCatalog()]);
+  if(!DB){loadLocal();return}
+  const got={items:false,recipes:false,settings:false};
+  const timer=setTimeout(()=>{if(S.mode==='loading'){S.mode='db';S.stale=true;rebuild();render()}},10000);
+  const done=(k,snap)=>{got[k]=true;if(snap&&!snap.metadata.fromCache&&S.stale){S.stale=false}if(Object.values(got).every(Boolean)&&S.mode==='loading'){S.mode='db';clearTimeout(timer)}rebuild();scheduleRender()};
+  const fail=e=>{clearTimeout(timer);if(e&&e.code==='revoked'){DB=null;loadLocal();return}S.mode='db';S.stale=true;rebuild();render()};
+  DB.collection('items').onSnapshot(s=>{OV.items=new Map(s.docs.map(d=>[d.id,{...d.data(),id:d.id}]));done('items',s)},fail);
+  DB.collection('recipes').onSnapshot(s=>{OV.recipes=new Map(s.docs.map(d=>{const v=d.data();return [d.id,{...v,inputs:(v.inputs||[]).map(i=>({...i})),id:d.id}]}));done('recipes',s)},fail);
+  DB.doc('meta/settings').onSnapshot(s=>{if(s.exists)S.settings={...S.settings,...s.data()};done('settings',s)},fail);
+}
+
+/* ---------- rendering ---------- */
+let pending=false;
+const editingNow=()=>{const a=document.activeElement;return !!(a&&a.matches&&a.matches('.cell-price,.cell-name,#recipeForm input,#recipeForm select,#feePct'))};
+function scheduleRender(){if(editingNow()){pending=true;return}render()}
+document.addEventListener('focusout',()=>setTimeout(()=>{if(pending&&!editingNow()){pending=false;render()}},0));
+
+function render(){
+  const a=document.activeElement,fid=a&&a.id,sel=a&&typeof a.selectionStart==='number'?[a.selectionStart,a.selectionEnd]:null;
+  renderStatus();renderTabs();
+  $('#valuation').value=S.settings.valuation||'cheaper';
+  if(document.activeElement!==$('#feePct'))$('#feePct').value=S.settings.feePct??0;
+  const m=$('#main');
+  if(S.mode==='loading')m.innerHTML='<div class="empty"><h2>Opening your ledger…</h2><p>Loading materials, items and recipes.</p></div>';
+  else if(UI.tab==='raw')m.innerHTML=viewRaw();
+  else if(UI.tab==='craftable')m.innerHTML=viewCraftable();
+  else m.innerHTML=viewRecipes();
+  if(fid){const el=document.getElementById(fid);if(el&&el!==document.activeElement){el.focus();if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+}
+function renderStatus(){
+  const st=$('#status');
+  if(S.mode==='loading'){st.innerHTML='<span class="dot loading"></span>Loading your ledger…';return}
+  const raws=rawItems().length,crafts=activeRecipes().length;
+  const where=S.mode==='db'?(S.stale?'<span class="dot local"></span>Saved data can’t be reached right now; showing what loaded':'<span class="dot"></span>Saved to this artifact'):'<span class="dot local"></span>Saving in this browser only';
+  const priced=[...S.items.values()].filter(i=>i.price!=null&&i.priceSource!=='npc'&&!IDX.byOutput.has(i.id)).length;
+  st.innerHTML=`${where}<span>·</span><span>${raws} raw materials (${priced} with your prices)</span><span>·</span><span>${crafts} recipes</span>${catalogInfo?`<span>·</span><span>Game data from metaroad.gg</span>`:''}`;
+}
+const activeRecipes=()=>[...S.recipes.values()].filter(r=>!S.items.get(r.outputId)?.asRaw);
+function rawItems(){return [...S.items.values()].filter(i=>!IDX.byOutput.has(i.id))}
+const KINDS=[['material','Raw materials'],['equipment','Base equipment'],['catalyst','Catalysts'],['other','Other']];
+function kindOf(i){if(i.kind)return i.kind;if(/^i1\d{6}$/.test(i.id))return 'equipment';if(/^i413\d{4}$/.test(i.id))return 'catalyst';return 'material'}
+function renderTabs(){
+  const tabs=[['raw','Raw Materials',rawItems().filter(i=>kindOf(i)==='material').length],['craftable','Craftable Items',activeRecipes().length],['recipes','Recipes',activeRecipes().length]];
+  $('#tabs').innerHTML=tabs.map(([k,l,c])=>`<button class="tab" role="tab" aria-selected="${UI.tab===k}" data-act="tab" data-tab="${k}">${l}<span class="count">${c}</span></button>`).join('');
+}
+function emptyState(){
+  return `<div class="empty"><h2>Your crafting ledger is empty</h2><p>Add raw materials with their prices, then add recipes that use them. Each recipe shows its craft cost, sale price and profit.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="load-example">Add the Bronze Guardian recipe</button><button class="btn" data-act="open-import">Import recipes</button><button class="btn" data-act="new-recipe">New recipe</button></div></div>`;
+}
+function exampleChip(it){return it&&it.sample?'<span class="chip example" title="Example price — set your own">example</span>':it&&it.priceSource==='npc'?'<span class="chip" title="Price from the NPC shop — type a market price to replace it">NPC shop</span>':''}
+function npcInfo(i){const a=[];if(i.npcBuy!=null)a.push(`NPC sells ${fmt(i.npcBuy)}`);if(i.vendorSell!=null)a.push(`vendor buys ${fmt(i.vendorSell)}`);return a.length?`<span class="meta">${a.join(' · ')}</span>`:'<span class="meta">—</span>'}
+
+function viewRaw(){
+  if(!S.items.size&&!S.recipes.size)return emptyState();
+  const q=norm(UI.rawQ);const uses=i=>(IDX.usedBy.get(i.id)||[]).length;
+  const all=rawItems();const rows=all.filter(i=>kindOf(i)===UI.rawKind&&(!q||norm(i.name).includes(q))).sort((a,b)=>UI.rawSort==='name'?a.name.localeCompare(b.name):UI.rawSort==='missing'?((a.price==null?0:1)-(b.price==null?0:1))||uses(b)-uses(a):uses(b)-uses(a)||a.name.localeCompare(b.name));
+  const missing=all.filter(i=>kindOf(i)===UI.rawKind&&i.price==null&&uses(i)).length;
+  const kc=k=>all.filter(i=>kindOf(i)===k).length;
+  const kindHelp={material:'Type what each material costs you on the market. Recipes use these prices, and crafted parts like Processed Leather use whichever is cheaper: buying them or crafting them from these.',equipment:'Equipment you buy or loot and then upgrade with a recipe, like Bronze Koif into Metal Koif. Its price counts toward the upgrade cost.',catalyst:'Catalysts go in the additive slot. They’re optional, so they show in recipes but aren’t counted in the cost.',other:'Items you moved here yourself.'};
+  return `${catalogErr?`<div class="notice bad">${esc(catalogErr)}</div>`:''}
+  <div class="filters" role="group" aria-label="Item type">${KINDS.filter(([k])=>k!=='other'||kc(k)).map(([k,l])=>`<button class="filter" aria-pressed="${UI.rawKind===k}" data-act="raw-kind" data-kind="${k}">${l} <span class="mono">${kc(k)}</span></button>`).join('')}</div>
+  <div class="toolbar"><div class="left"><input type="search" class="search" id="rawQ" placeholder="Search materials" value="${esc(UI.rawQ)}" aria-label="Search materials">
+    <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="rawSort">${[['used','Most used'],['missing','Needs a price'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.rawSort===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    ${missing?`<span class="chip warn">${missing} used materials without a price</span>`:''}</div>
+    <form class="addform right" id="addRaw"><input type="text" name="name" id="addRawName" placeholder="New material name" aria-label="New material name" required><input type="text" name="price" id="addRawPrice" placeholder="Price (e.g. 1.5k)" aria-label="Price" inputmode="decimal"><button class="btn primary" type="submit">Add material</button></form></div>
+  <p class="meta" style="margin:0">${kindHelp[UI.rawKind]}</p>
+  <div class="tablewrap"><table><thead><tr><th>Item</th><th class="num">Market price</th><th>NPC reference</th><th>Used in</th><th>Type</th><th>Updated</th><th></th></tr></thead><tbody>
+  ${rows.map(i=>{const used=IDX.usedBy.get(i.id)||[];const armed=UI.confirm==='item:'+i.id;
+    return `<tr><td><div style="display:flex;align-items:center;gap:6px"><input class="cell-name" id="nm-${i.id}" data-id="${i.id}" value="${esc(i.name)}" aria-label="Name">${exampleChip(i)}</div></td>
+    <td class="num"><input class="cell-price ${i.price==null&&used.length?'empty':''}" id="pr-${i.id}" data-id="${i.id}" value="${i.price==null?'':fmt(i.price)}" placeholder="Set price" inputmode="decimal" aria-label="Price of ${esc(i.name)}"></td>
+    <td>${npcInfo(i)}</td>
+    <td><div class="chips">${used.slice(0,3).map(r=>`<span class="chip link" data-act="open-recipe" data-id="${r.id}">${esc(itemName(r.outputId))}</span>`).join('')}${used.length>3?`<span class="chip">+${used.length-3}</span>`:''}${used.length?'':'<span class="meta">Not used yet</span>'}</div></td>
+    <td><select class="cell-kind" id="kd-${i.id}" data-id="${i.id}" aria-label="Type of ${esc(i.name)}">${KINDS.map(([k,l])=>`<option value="${k}" ${kindOf(i)===k?'selected':''}>${l}</option>`).join('')}</select></td>
+    <td class="meta">${ago(i.updatedAt)}</td>
+    <td class="num" style="white-space:nowrap"><button class="btn small" data-act="make-craft" data-id="${i.id}" title="Move to Craftable Items">${(S.recipes.size&&[...S.recipes.values()].some(r=>r.outputId===i.id))?'Restore recipes':'Make craftable'}</button> <button class="btn small danger ${armed?'armed':''}" data-act="del-item" data-id="${i.id}">${armed?(used.length?'Used in recipes':'Confirm delete'):'Delete'}</button></td></tr>`}).join('')||`<tr><td colspan="7" class="meta">${q?'Nothing matches your search.':'Nothing here yet.'}</td></tr>`}
+  </tbody></table></div>`;
+}
+
+
+/* Full materials plan for n crafts: whole crafts of every intermediate, aggregated across the tree.
+   mode 'raw' crafts every craftable part from raw; 'cheapest' buys parts when buying is cheaper. */
+function materialPlan(r,n,mode){
+  const pick=id=>{if(id===r.outputId)return null;const rs=IDX.byOutput.get(id);if(!rs)return null;
+    if(mode==='cheapest'){const v=unitValue(id);return v.source==='craft'?v.recipe:null}
+    const b=bestCraft(id);return b&&!b.c.cycle?b.r:null};
+  const depth=new Map(),seen=new Set();
+  const walk=(rec,d)=>{for(const i of rec.inputs||[]){if(i.optional)continue;const id=i.itemId;if((depth.get(id)??-1)>=d)continue;if(seen.has(id)||d>30)continue;depth.set(id,d);const sub=pick(id);if(sub){seen.add(id);walk(sub,d+1);seen.delete(id)}}};
+  walk(r,1);
+  const demand=new Map();let mesos=(Number(r.mesos)||0)*n;
+  for(const i of r.inputs||[])if(!i.optional)demand.set(i.itemId,(demand.get(i.itemId)||0)+i.qty*n);
+  const crafts=[],buy=[];
+  for(const id of [...depth.keys()].sort((a,b)=>depth.get(a)-depth.get(b))){
+    const need=demand.get(id)||0;if(!need)continue;const sub=pick(id);
+    if(sub){const y=yieldOf(sub);const c=Math.ceil(need/y-1e-9);mesos+=c*(Number(sub.mesos)||0);crafts.push({id,need,crafts:c,made:c*y,extra:c*y-need,recipe:sub});
+      for(const i of sub.inputs||[])if(!i.optional)demand.set(i.itemId,(demand.get(i.itemId)||0)+i.qty*c)}
+    else{const p=S.items.get(id)?.price;buy.push({id,qty:need,price:p??null,cost:p==null?null:p*need})}
+  }
+  buy.sort((a,b)=>(b.cost||0)-(a.cost||0));
+  const buyCost=buy.reduce((s,b)=>s+(b.cost||0),0);
+  return {crafts,buy,mesos,total:buyCost+mesos,missing:buy.filter(b=>b.price==null).length};
+}
+const lvlOk=r=>{const l=Number(r.level)||0;return l>=UI.lvMin&&l<=UI.lvMax};
+function levelPicker(){const o=v=>[1,2,3,4,5,6,7,8,9,10].map(i=>`<option value="${i}" ${v===i?'selected':''}>${i}</option>`).join('');
+  return `<label class="field" style="flex-direction:row;align-items:center;gap:6px"><span>Level</span><select id="lvMin" aria-label="Lowest profession level">${o(UI.lvMin)}</select><span class="meta">to</span><select id="lvMax" aria-label="Highest profession level">${o(UI.lvMax)}</select></label>`}
+function roleOf(it){if(!it)return 'product';if(it.role)return it.role;return /^i4\d{6}$/.test(it.id)?'material':'product'}
+function buyVsCraft(r){const c=craftCost(r);const it=S.items.get(r.outputId);const market=it&&it.price!=null?it.price:null;const complete=c.missing.size===0&&!c.cycle;
+  const save=market==null||!complete?null:market-c.perUnit;
+  return {each:c.perUnit,market,complete,missing:c.missing,cycle:c.cycle,save,verdict:c.cycle?'loop':!complete?'missing':market==null?'nomarket':Math.abs(save)<0.5?'same':save>0?'craft':'buy'}}
+function verdictChip(v){return v.verdict==='loop'?'<span class="chip bad">Loop in recipe</span>':v.verdict==='missing'?`<span class="chip warn">${v.missing.size} price${v.missing.size>1?'s':''} missing</span>`:v.verdict==='nomarket'?'<span class="chip warn">No market price</span>':v.verdict==='same'?'<span class="chip">Same either way</span>':v.verdict==='craft'?'<span class="chip good">Craft it</span>':'<span class="chip steel">Buy it</span>'}
+function viewCraftable(){
+  if(!S.recipes.size)return emptyState();
+  const q=norm(UI.craftQ);const view=UI.craftView||'product';
+  const base=activeRecipes().filter(r=>lvlOk(r)&&(UI.prof==='All'||r.profession===UI.prof)&&(!q||norm(itemName(r.outputId)).includes(q)));
+  const nProd=activeRecipes().filter(r=>roleOf(S.items.get(r.outputId))==='product').length,nMat=activeRecipes().length-nProd;
+  const profs=['All',...PROFESSIONS.filter(p=>activeRecipes().some(r=>r.profession===p))];
+  const views=`<div class="filters" role="group" aria-label="What to show"><button class="filter" aria-pressed="${view==='product'}" data-act="craft-view" data-view="product">Items to sell <span class="mono">${nProd}</span></button><button class="filter" aria-pressed="${view==='material'}" data-act="craft-view" data-view="material">Crafting materials <span class="mono">${nMat}</span></button></div>`;
+  const roleBtn=r=>`<button class="btn small ghost" data-act="set-role" data-id="${r.outputId}" data-role="${view==='product'?'material':'product'}" title="${view==='product'?'Treat as a crafting material: compare buy vs craft instead of profit':'Treat as an item you sell: show profit'}">${view==='product'?'Is a material':'Is for sale'}</button>`;
+  const actions=r=>`<td class="num" style="white-space:nowrap">${roleBtn(r)}<button class="btn small ghost" data-act="make-raw" data-id="${r.outputId}" title="Treat as bought instead of crafted">Move to raw</button></td>`;
+  const toolbar=sortOpts=>`${views}<div class="toolbar"><div class="left"><input type="search" class="search" id="craftQ" placeholder="Search items" value="${esc(UI.craftQ)}" aria-label="Search craftable items">
+    <div class="filters">${profs.map(p=>`<button class="filter" aria-pressed="${UI.prof===p}" data-act="prof" data-prof="${esc(p)}">${esc(p)}</button>`).join('')}</div></div>
+    <div class="right">${levelPicker()}${sortOpts}<button class="btn primary" data-act="new-recipe">New recipe</button></div></div>`;
+  const priceCell=(it,label)=>`<td class="num"><div style="display:flex;justify-content:flex-end;gap:6px;align-items:center">${exampleChip(it)}<input class="cell-price ${it?.price==null?'empty':''}" id="sp-${it?.id}" data-id="${it?.id}" value="${it?.price==null?'':fmt(it.price)}" placeholder="Set price" inputmode="decimal" aria-label="${label} of ${esc(it?.name)}"></div></td>`;
+  if(view==='material'){
+    const rows=base.filter(r=>roleOf(S.items.get(r.outputId))==='material').map(r=>({r,it:S.items.get(r.outputId),v:buyVsCraft(r),used:(IDX.usedBy.get(r.outputId)||[]).length}))
+      .sort((a,b)=>UI.matSort==='name'?a.it.name.localeCompare(b.it.name):b.used-a.used||a.it.name.localeCompare(b.it.name));
+    return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="matSort">${[['used','Most used'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.matSort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
+    <p class="meta" style="margin:0">Materials you make for other recipes, like ingots and Processed Leather. You don't sell these, so instead of profit this compares the cost of one unit crafted vs bought. Recipes that use them take the cheaper option.</p>
+    <div class="tablewrap"><table><thead><tr><th>Material</th><th>Profession</th><th class="num">Craft cost (each)</th><th class="num">Market price (each)</th><th class="num">Crafting saves</th><th>Best option</th><th>Used in</th><th></th></tr></thead><tbody>
+    ${rows.map(({r,it,v,used})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
+      <td><span class="itemname">${esc(recipeLabel(r))}</span>${yieldOf(r)>1?` <span class="meta">makes ${yieldOf(r)}</span>`:''}</td>
+      <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
+      <td class="num">${v.complete?fmtUnit(v.each):'—'}</td>
+      ${priceCell(it,'Market price')}
+      <td class="num profit ${v.save==null?'':v.save>=0?'pos':'neg'}">${v.save==null?'—':signed(v.save)}</td>
+      <td>${verdictChip(v)}</td>
+      <td class="meta">${used} recipe${used===1?'':'s'}</td>
+      ${actions(r)}</tr>`).join('')||'<tr><td colspan="8" class="meta">No materials match.</td></tr>'}
+    </tbody></table></div>`;
+  }
+  let rows=base.filter(r=>roleOf(S.items.get(r.outputId))==='product').map(r=>({r,it:S.items.get(r.outputId),e:econ(r)}));
+  const key=UI.sort;const nv=v=>v==null||!isFinite(v)?-Infinity:v;
+  rows.sort((a,b)=>key==='name'?(a.it?.name||'').localeCompare(b.it?.name||''):key==='level'?(Number(b.r.level)||0)-(Number(a.r.level)||0):key==='margin'?nv(b.e.margin)-nv(a.e.margin):key==='cost'?a.e.cost-b.e.cost:nv(b.e.profit)-nv(a.e.profit));
+  return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="sort">${[['profit','Profit'],['margin','Margin'],['level','Level (high first)'],['cost','Craft cost'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
+  <div class="tablewrap"><table><thead><tr><th>Item</th><th>Profession</th><th class="num">Craft cost</th><th class="num">Sells for (each)</th><th class="num">Profit / craft</th><th class="num">Margin</th><th>Status</th><th></th></tr></thead><tbody>
+  ${rows.map(({r,it,e})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
+    <td><span class="itemname">${esc(recipeLabel(r))}</span>${e.y>1?` <span class="meta">makes ${e.y}</span>`:''}</td>
+    <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
+    <td class="num">${fmt(e.cost)}</td>
+    ${priceCell(it,'Sell price')}
+    <td class="num profit ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</td>
+    <td class="num ${e.margin==null?'':e.margin>=0?'pos':'neg'}">${fmtPct(e.margin)}</td>
+    <td>${e.cycle?'<span class="chip bad">Loop in recipe</span>':!e.complete?`<span class="chip warn">${e.missing.size} price${e.missing.size>1?'s':''} missing</span>`:e.sell==null?'<span class="chip warn">No sell price</span>':e.profit>=0?'<span class="chip good">Profitable</span>':'<span class="chip bad">Loses mesos</span>'}</td>
+    ${actions(r)}
+  </tr>`).join('')||'<tr><td colspan="8" class="meta">No items match.</td></tr>'}
+  </tbody></table></div>
+  <p class="meta">Profit per craft = sell price × yield${Number(S.settings.feePct)?` − ${S.settings.feePct}% fee`:''} − craft cost. Materials inside each recipe are costed at whichever is cheaper, buying or crafting.</p>`;
+}
+
+function viewRecipes(){
+  if(!S.recipes.size&&!UI.draft)return emptyState();
+  const q=norm(UI.recQ);
+  const list=activeRecipes().filter(r=>lvlOk(r)&&(UI.recProf==='All'||r.profession===UI.recProf)&&(!q||norm(recipeLabel(r)).includes(q))).sort((a,b)=>(a.profession||'').localeCompare(b.profession||'')||(Number(a.level)||0)-(Number(b.level)||0)||itemName(a.outputId).localeCompare(itemName(b.outputId)));
+  if(!UI.draft&&(!UI.sel||!S.recipes.has(UI.sel)))UI.sel=list[0]?.id||null;
+  return `<div class="recipes"><aside class="reclist">
+    <div style="display:flex;gap:8px"><input type="search" id="recQ" placeholder="Search recipes" value="${esc(UI.recQ)}" style="flex:1" aria-label="Search recipes"><button class="btn primary" data-act="new-recipe">New</button></div>
+    <div style="display:flex;gap:8px;align-items:center">${levelPicker()}</div>
+    <select id="recProf" aria-label="Profession">${['All',...PROFESSIONS].map(p=>`<option value="${p}" ${UI.recProf===p?'selected':''}>${p==='All'?'All professions':p}</option>`).join('')}</select>
+    <div class="list">${list.map(r=>{const e=econ(r);return `<button class="recbtn" data-act="sel-recipe" data-id="${r.id}" aria-current="${!UI.draft&&UI.sel===r.id}"><span><span class="itemname">${esc(recipeLabel(r))}</span><br><span class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</span></span>${roleOf(S.items.get(r.outputId))==='material'?`<span class="r"><span class="num">${fmtUnit(buyVsCraft(r).each)}</span><span class="meta">each</span></span>`:`<span class="r"><span class="num ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</span><span class="meta">profit</span></span>`}</button>`}).join('')||'<div class="meta" style="padding:10px">No recipes match.</div>'}</div>
+    <button class="btn" data-act="open-import">Import recipes</button>
+  </aside><section class="detail">${UI.draft?viewEditor():UI.sel?viewDetail(S.recipes.get(UI.sel)):''}</section></div>`;
+}
+
+function srcChip(v){return v.cycle?'<span class="chip bad">loop</span>':v.source==='craft'?'<span class="chip steel">crafted</span>':v.source==='market'?'<span class="chip">market</span>':'<span class="chip warn">no price</span>'}
+function treeRows(r,mult,depth,path,out){
+  if(Number(r.mesos))out.push(`<tr class="${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px"><span class="twisty-pad"></span><span class="coin"></span>Crafting fee</div></td><td class="num">${fmtQty(mult)}</td><td class="num">${fmt(r.mesos)}</td><td class="num">${fmt(r.mesos*mult)}</td><td><span class="chip">mesos</span></td></tr>`);
+  if(depth>12)return;
+  for(const inp of r.inputs||[]){
+    const q=inp.qty*mult;const it=S.items.get(inp.itemId);
+    if(inp.optional){out.push(`<tr class="optional ${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px"><span class="twisty-pad"></span>${esc(it?.name)}</div></td><td class="num">${fmtQty(q)}</td><td class="num">—</td><td class="num">—</td><td><span class="chip">additive · not counted</span></td></tr>`);continue}
+    const v=unitValue(inp.itemId);const key=path+'>'+inp.itemId;const sub=v.recipe;const can=v.source==='craft'&&sub;const open=can&&UI.expanded.has(key);
+    out.push(`<tr class="${depth?'sub':''}"><td><div class="tname" style="padding-left:${depth*20}px">${can?`<button class="twisty" aria-expanded="${open}" aria-label="Show parts of ${esc(it?.name)}" data-act="twisty" data-key="${esc(key)}"></button>`:'<span class="twisty-pad"></span>'}<span class="${depth?'':'itemname'}">${esc(it?.name)}</span>${exampleChip(it)}</div></td>
+      <td class="num">${fmtQty(q)}</td><td class="num">${v.source==='missing'?'—':fmtUnit(v.value)}</td><td class="num">${v.source==='missing'?'—':fmt(q*v.value)}</td><td>${srcChip(v)}</td></tr>`);
+    if(open)treeRows(sub,q/yieldOf(sub),depth+1,key,out);
+  }
+}
+function viewDetail(r){
+  if(!r)return '';
+  const it=S.items.get(r.outputId);const n=Math.max(1,UI.qty|0);const e=econ(r,n);
+  const rows=[];treeRows(r,n,0,r.id,rows);
+  const plan=materialPlan(r,n,UI.planMode==='cheapest'?'cheapest':'raw');
+  const armed=UI.confirm==='recipe:'+r.id;
+  const hasCrafted=(r.inputs||[]).some(i=>!i.optional&&unitValue(i.itemId).source==='craft');
+  const alts=(IDX.byOutput.get(r.outputId)||[]).filter(x=>x.id!==r.id);const best=unitValue(r.outputId).recipe;
+  return `<div class="dhead"><div><h2>${esc(it?.name)}</h2><div class="meta">${esc(r.profession||'No profession')} · Level ${esc(r.level??'—')} · Makes ${e.y} per craft${it?.npcBuy!=null?` · NPC sells for ${fmt(it.npcBuy)}`:''}${it?.vendorSell!=null?` · vendor buys for ${fmt(it.vendorSell)}`:''}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" data-act="make-raw" data-id="${r.outputId}">Move to raw</button><button class="btn small" data-act="edit-recipe" data-id="${r.id}">Edit recipe</button><button class="btn small ${armed?'danger armed':''}" data-act="del-recipe" data-id="${r.id}">${armed?'Confirm delete':'Delete'}</button></div></div>
+  ${alts.length?`<div class="notice info">${esc(it?.name)} has ${alts.length+1} recipes. ${best&&best.id===r.id?'This is the cheapest one right now, so other recipes use it.':'Other recipes use the cheapest one.'} ${alts.map(x=>`<span class="chip link" data-act="sel-recipe" data-id="${x.id}">from ${esc(itemName((x.inputs.find(i=>!i.optional)||{}).itemId))}</span>`).join(' ')}</div>`:''}
+  ${e.cycle?'<div class="notice bad">This recipe uses itself somewhere down the chain. Check the required items.</div>':''}
+  ${!e.complete?`<div class="notice">Missing prices: ${[...e.missing].map(id=>`<span class="chip link" data-act="goto-raw" data-name="${esc(itemName(id))}">${esc(itemName(id))}</span>`).join(' ')} Costs below count these as 0.</div>`:''}
+  <div class="qtyrow"><span class="meta">Crafts</span><div class="stepper"><button data-act="qty" data-d="-1" aria-label="Fewer crafts">−</button><input type="number" id="qtyIn" min="1" value="${n}" aria-label="Number of crafts"><button data-act="qty" data-d="1" aria-label="More crafts">+</button></div>
+    <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-left:auto"><span>Market price</span><input class="cell-price ${e.sell==null?'empty':''}" id="dsp-${r.outputId}" data-id="${r.outputId}" value="${e.sell==null?'':fmt(e.sell)}" placeholder="Set price" inputmode="decimal"></label></div>
+  ${roleOf(it)==='material'?(()=>{const v=buyVsCraft(r);return `<div class="summary">
+    <div><span class="label">Craft cost (each)</span><span class="val"><span class="coin"></span>${v.complete?fmtUnit(v.each):'—'}</span></div>
+    <div><span class="label">Market price (each)</span><span class="val"><span class="coin"></span>${v.market==null?'—':fmt(v.market)}</span></div>
+    <div><span class="label">Crafting saves (each)</span><span class="val ${v.save==null?'':v.save>=0?'pos':'neg'}">${v.save==null?'—':signed(v.save)}</span></div>
+    <div><span class="label">Best option</span><span class="val" style="font-size:14px">${verdictChip(v)}</span></div>
+  </div><p class="meta" style="margin:0">${esc(it?.name)} is a crafting material, so this compares crafting with buying instead of showing profit. <button class="btn small ghost" data-act="set-role" data-id="${it?.id}" data-role="product">I sell this</button></p>`})():`<div class="summary">
+    <div><span class="label">Craft cost</span><span class="val"><span class="coin"></span>${fmt(e.cost)}</span></div>
+    <div><span class="label">Sells for${Number(S.settings.feePct)?' (after fee)':''}</span><span class="val"><span class="coin"></span>${e.revenue==null?'—':fmt(e.revenue)}</span></div>
+    <div><span class="label">Profit</span><span class="val ${e.profit==null?'':e.profit>=0?'pos':'neg'}">${signed(e.profit)}</span></div>
+    <div><span class="label">Margin</span><span class="val ${e.margin==null?'':e.margin>=0?'pos':'neg'}">${fmtPct(e.margin)}</span></div>
+  </div>`}
+  <div class="cols">
+    <div class="card tree"><div class="actions"><h3>Cost breakdown</h3>${hasCrafted?`<div style="display:flex;gap:6px"><button class="btn small ghost" data-act="expand-all">Expand all</button><button class="btn small ghost" data-act="collapse-all">Collapse</button></div>`:''}</div>
+      <div class="tablewrap"><table><thead><tr><th>Required</th><th class="num">Qty</th><th class="num">Each</th><th class="num">Total</th><th>Priced as</th></tr></thead><tbody>${rows.join('')}
+      <tr class="total"><td>Total</td><td></td><td></td><td class="num">${fmt(e.cost)}</td><td></td></tr></tbody></table></div></div>
+    <div class="card"><div class="actions"><h3>Materials needed</h3><div class="filters"><button class="filter" aria-pressed="${UI.planMode!=='cheapest'}" data-act="plan-mode" data-mode="raw">Craft from raw</button><button class="filter" aria-pressed="${UI.planMode==='cheapest'}" data-act="plan-mode" data-mode="cheapest">Cheapest plan</button></div></div>
+      <div class="meta">${UI.planMode==='cheapest'?'Buys any part that is cheaper to buy, crafts the rest.':'Crafts every part yourself, down to ores, drops and Leather.'} For ${n} craft${n>1?'s':''}, rounded to whole crafts.</div>
+      ${plan.crafts.length?`<h3 style="margin-top:4px">Craft first</h3><div class="shop">${plan.crafts.map(c=>`<div class="row"><span>${esc(itemName(c.id))} <span class="meta">${c.crafts} craft${c.crafts>1?'s':''}${c.extra>0?` · ${fmtQty(c.extra)} left over`:''}</span></span><span class="num">${fmtQty(c.made)}</span></div>`).join('')}</div>`:''}
+      <h3 style="margin-top:4px">Buy or farm</h3><div class="shop">${plan.buy.map(b=>`<div class="row"><span>${esc(itemName(b.id))}</span><span class="num">${fmtQty(b.qty)}${b.price==null?' <span class="chip warn">no price</span>':` <span class="meta">${fmt(b.cost)}</span>`}</span></div>`).join('')}
+      <div class="row"><span><span class="coin"></span>Crafting fees</span><span class="num">${fmt(plan.mesos)}</span></div>
+      <div class="row" style="font-weight:700"><span>Total cost${plan.missing?' (some prices missing)':''}</span><span class="num">${fmt(plan.total)}</span></div></div></div>
+  </div>`;
+}
+
+function blankDraft(){return {id:null,outputName:'',profession:'Weaponcrafting',level:'',yield:'1',mesos:'',sellPrice:'',inputs:[{name:'',qty:'1',optional:false}]}}
+function draftFrom(r){const it=S.items.get(r.outputId);return {id:r.id,outputName:it?.name||'',profession:r.profession||'Other',level:r.level??'',yield:String(r.yield||1),mesos:r.mesos?fmt(r.mesos):'',sellPrice:it?.price!=null?fmt(it.price):'',inputs:(r.inputs||[]).map(i=>({name:itemName(i.itemId),qty:String(i.qty),optional:!!i.optional}))}}
+function viewEditor(){
+  const d=UI.draft;
+  return `<form id="recipeForm" class="editor"><div class="actions"><h2>${d.id?'Edit recipe':'New recipe'}</h2>${d.fromShot?'<span class="chip steel">Read from screenshot — check before saving</span>':''}</div>
+  <datalist id="itemNames">${[...S.items.values()].map(i=>`<option value="${esc(i.name)}">`).join('')}</datalist>
+  <div class="grid4"><label class="field wide"><span>Item crafted</span><input type="text" id="d-outputName" data-f="outputName" value="${esc(d.outputName)}" list="itemNames" required placeholder="e.g. Bronze Guardian"></label>
+    <label class="field"><span>Profession</span><select id="d-profession" data-f="profession">${PROFESSIONS.map(p=>`<option ${d.profession===p?'selected':''}>${p}</option>`).join('')}</select></label>
+    <label class="field"><span>Level</span><input type="number" id="d-level" data-f="level" min="0" value="${esc(d.level)}"></label>
+    <label class="field"><span>Yield</span><input type="number" id="d-yield" data-f="yield" min="1" value="${esc(d.yield)}"></label></div>
+  <div class="grid3"><label class="field"><span>Mesos per craft</span><input type="text" id="d-mesos" data-f="mesos" value="${esc(d.mesos)}" inputmode="decimal" placeholder="9,000"></label>
+    <label class="field"><span>Market price (each)</span><input type="text" id="d-sellPrice" data-f="sellPrice" value="${esc(d.sellPrice)}" inputmode="decimal" placeholder="Optional, e.g. 60k"></label></div>
+  <div class="card"><h3>Required items</h3><div class="inhead"><span>Item</span><span>Qty</span><span>Additive</span><span></span></div>
+    <div class="inrows">${d.inputs.map((i,k)=>`<div class="inrow"><input type="text" id="d-in-name-${k}" data-row="${k}" data-rf="name" value="${esc(i.name)}" list="itemNames" placeholder="Item name" aria-label="Item ${k+1}">
+      <input type="number" id="d-in-qty-${k}" data-row="${k}" data-rf="qty" min="0" step="any" value="${esc(i.qty)}" aria-label="Quantity ${k+1}">
+      <label class="opt" title="Optional additive: shown but left out of the cost"><input type="checkbox" id="d-in-opt-${k}" data-row="${k}" data-rf="optional" ${i.optional?'checked':''}>Optional</label>
+      <button type="button" class="btn small ghost" data-act="del-row" data-k="${k}" aria-label="Remove item ${k+1}">Remove</button></div>`).join('')}</div>
+    <div><button type="button" class="btn small" data-act="add-row">Add required item</button></div>
+    <div class="meta">New item names are added to Raw Materials. Give one of them its own recipe and it moves to Craftable Items, and its cost flows into this one.</div></div>
+  ${UI.draftErr?`<div class="err">${esc(UI.draftErr)}</div>`:''}
+  <div class="actions"><button type="button" class="btn" data-act="cancel-edit">Cancel</button><button type="submit" class="btn primary">Save recipe</button></div></form>`;
+}
+
+/* ---------- actions ---------- */
+function setTab(t){UI.tab=t;UI.confirm=null;try{history.replaceState(null,'','#'+t)}catch(e){location.hash=t}render()}
+function commitPrice(el){
+  const it=S.items.get(el.dataset.id);if(!it)return;const v=parseNum(el.value);
+  if(Number.isNaN(v)){toast('Enter a number like 1500, 1.5k or 2m.');el.value=it.price==null?'':fmt(it.price);return}
+  if(v===it.price&&!it.sample&&!it.priceSource)return;
+  saveItem({...it,price:v,sample:false,priceSource:null,updatedAt:now()});invalidate();render();
+}
+function commitName(el){
+  const it=S.items.get(el.dataset.id);if(!it)return;const v=el.value.trim();
+  if(!v){el.value=it.name;return}
+  const ex=itemByName(v);if(ex&&ex.id!==it.id){toast(`“${v}” already exists.`);el.value=it.name;return}
+  if(v===it.name)return;saveItem({...it,name:v,updatedAt:now()});invalidate();render();
+}
+function saveDraft(){
+  const d=UI.draft;UI.draftErr='';
+  const name=d.outputName.trim();if(!name){UI.draftErr='Name the item this recipe crafts.';return render()}
+  const inputs=d.inputs.filter(i=>i.name.trim());
+  if(!inputs.length){UI.draftErr='Add at least one required item.';return render()}
+  for(const i of inputs){const q=parseNum(i.qty);if(!q||Number.isNaN(q)){UI.draftErr=`Enter a quantity for ${i.name}.`;return render()}}
+  if(inputs.some(i=>norm(i.name)===norm(name))){UI.draftErr='An item can’t be one of its own required items.';return render()}
+  const mesos=parseNum(d.mesos),sell=parseNum(d.sellPrice);
+  if(Number.isNaN(mesos)){UI.draftErr='Mesos per craft must be a number.';return render()}
+  if(Number.isNaN(sell)){UI.draftErr='Sell price must be a number.';return render()}
+  const old=d.id?S.recipes.get(d.id):null;
+  let out;
+  if(old){out=S.items.get(old.outputId);const ex=itemByName(name);if(ex&&ex.id!==out?.id){UI.draftErr=`“${name}” already exists as another item.`;return render()}
+    if(out&&out.name!==name)out={...out,name,updatedAt:now()}}
+  else out=itemByName(name)||{id:uid('item'),name,price:null,updatedAt:now()};
+  if(d.sellPrice.trim()!==''&&sell!==out.price)out={...out,price:sell,sample:false,priceSource:null,updatedAt:now()};
+  if(d.sellPrice.trim()===''&&out.price!=null&&old)out={...out,price:null,updatedAt:now()};
+  if(out.asRaw)out={...out,asRaw:false};
+  saveItem(out);
+  const merged=new Map();for(const i of inputs){const it=ensureItem(i.name);const k=it.id+(i.optional?':o':'');const q=parseNum(i.qty);merged.set(k,{itemId:it.id,qty:(merged.get(k)?.qty||0)+q,optional:!!i.optional})}
+  const r={id:d.id||uid('recipe'),outputId:out.id,profession:d.profession,level:d.level===''?null:Number(d.level),yield:Math.max(1,parseInt(d.yield)||1),mesos:mesos||0,inputs:[...merged.values()],updatedAt:now()};
+  saveRecipe(r);UI.draft=null;UI.sel=r.id;invalidate();render();toast('Recipe saved.');
+}
+const ACT={
+  tab:t=>setTab(t.dataset.tab),
+  'open-recipe':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.qty=1;setTab('recipes')},
+  'sel-recipe':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.confirm=null;UI.qty=1;render()},
+  'new-recipe':()=>{UI.draft=blankDraft();UI.draftErr='';if(UI.tab!=='recipes')setTab('recipes');else render()},
+  'edit-recipe':t=>{UI.draft=draftFrom(S.recipes.get(t.dataset.id));UI.draftErr='';render()},
+  'cancel-edit':()=>{UI.draft=null;UI.draftErr='';render()},
+  'add-row':()=>{UI.draft.inputs.push({name:'',qty:'1',optional:false});render();const k=UI.draft.inputs.length-1;document.getElementById('d-in-name-'+k)?.focus()},
+  'del-row':t=>{UI.draft.inputs.splice(+t.dataset.k,1);if(!UI.draft.inputs.length)UI.draft.inputs.push({name:'',qty:'1',optional:false});render()},
+  'del-item':t=>{const id=t.dataset.id;const used=IDX.usedBy.get(id)||[];
+    if(UI.confirm!=='item:'+id){UI.confirm='item:'+id;return render()}
+    if(used.length){toast(`Remove it from ${used.length} recipe${used.length>1?'s':''} first.`);UI.confirm=null;return render()}
+    const n=itemName(id);delItem(id);UI.confirm=null;invalidate();render();toast(`Deleted ${n}.`)},
+  'del-recipe':t=>{const id=t.dataset.id;if(UI.confirm!=='recipe:'+id){UI.confirm='recipe:'+id;return render()}
+    const r=S.recipes.get(id);const out=r.outputId;const n=itemName(out);delRecipe(id);invalidate();
+    if(IDX.byOutput.has(out))toast(`Deleted this ${n} recipe. Its other recipes remain.`);
+    else if(!(IDX.usedBy.get(out)||[]).length){delItem(out);toast(`Deleted the ${n} recipe.`)}else toast(`Deleted the recipe. ${n} is still used by other recipes, so it moved to Raw Materials.`);
+    UI.confirm=null;UI.sel=null;invalidate();render()},
+  twisty:t=>{const k=t.dataset.key;UI.expanded.has(k)?UI.expanded.delete(k):UI.expanded.add(k);render()},
+  'expand-all':()=>{const r=S.recipes.get(UI.sel);const walk=(r,path,d)=>{if(d>12)return;for(const i of r.inputs||[]){const v=unitValue(i.itemId),sub=v.recipe;if(!i.optional&&sub&&v.source==='craft'){const k=path+'>'+i.itemId;UI.expanded.add(k);walk(sub,k,d+1)}}};walk(r,r.id,0);render()},
+  'collapse-all':()=>{UI.expanded.clear();render()},
+  qty:t=>{UI.qty=Math.max(1,(UI.qty|0)+ +t.dataset.d);render()},
+  prof:t=>{UI.prof=t.dataset.prof;render()},
+  'make-raw':t=>{const it=S.items.get(t.dataset.id);if(!it)return;saveItem({...it,asRaw:true,updatedAt:now()});invalidate();UI.sel=null;
+    toast(`${it.name} moved to Raw Materials. Its recipes are kept, so you can restore them there.${it.price==null?' Set its market price there too.':''}`);render()},
+  'make-craft':t=>{const it=S.items.get(t.dataset.id);if(!it)return;
+    if(it.asRaw||[...S.recipes.values()].some(r=>r.outputId===it.id)){saveItem({...it,asRaw:false,updatedAt:now()});invalidate();toast(`${it.name} moved back to Craftable Items.`);render();return}
+    UI.draft={...blankDraft(),outputName:it.name};UI.draftErr='';toast(`Add the recipe for ${it.name}. Saving it moves the item to Craftable Items.`);setTab('recipes')},
+  'plan-mode':t=>{UI.planMode=t.dataset.mode;render()},
+  'craft-view':t=>{UI.craftView=t.dataset.view;render()},
+  'set-role':t=>{const it=S.items.get(t.dataset.id);if(!it)return;saveItem({...it,role:t.dataset.role,updatedAt:now()});invalidate();toast(t.dataset.role==='material'?`${it.name} moved to Crafting materials.`:`${it.name} moved to Items to sell.`);render()},
+  'raw-kind':t=>{UI.rawKind=t.dataset.kind;render()},
+  'goto-raw':t=>{UI.rawQ=t.dataset.name;setTab('raw')},
+  'open-import':()=>{$('#importModal').hidden=false;$('#importMsg').textContent='';$('#shotBox').hidden=!SAMPLE;setTimeout(()=>$('#importText').focus(),0)},
+  'close-import':()=>{$('#importModal').hidden=true},
+  'fill-example':()=>{$('#importText').value=EXAMPLE_CSV},
+  'do-import':()=>doImport($('#importText').value),
+  'load-example':async()=>{const res=await applyImport(interpret(EXAMPLE_CSV));toast(res);setTab('recipes')},
+  export:()=>doExport(),
+};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');
+  if(!t){if(UI.confirm){UI.confirm=null;render()}return}
+  if(t.tagName==='TR'&&e.target.closest('input,select,textarea,label,button'))return;
+  if(UI.confirm&&!['del-item','del-recipe'].includes(t.dataset.act))UI.confirm=null;
+  ACT[t.dataset.act]?.(t,e);
+});
+document.addEventListener('submit',e=>{e.preventDefault();
+  if(e.target.id==='addRaw'){const f=new FormData(e.target);const name=String(f.get('name')||'').trim();const price=parseNum(f.get('price'));
+    if(!name)return;if(Number.isNaN(price)){toast('Enter a price like 1500, 1.5k or 2m.');return}
+    const ex=itemByName(name);if(ex){toast(`${ex.name} is already in your list.`);return}
+    saveItem({id:uid('item'),name,price,kind:UI.rawKind==='other'?'material':UI.rawKind,updatedAt:now()});invalidate();render();toast(`Added ${name}.`);document.getElementById('addRawName')?.focus()}
+  if(e.target.id==='recipeForm')saveDraft();
+});
+document.addEventListener('change',e=>{const el=e.target;
+  if(el.classList.contains('cell-price'))commitPrice(el);
+  else if(el.classList.contains('cell-name'))commitName(el);
+  else if(el.classList.contains('cell-kind')){const it=S.items.get(el.dataset.id);if(it){saveItem({...it,kind:el.value,updatedAt:now()});invalidate();render();toast(`Moved ${it.name} to ${KINDS.find(k=>k[0]===el.value)[1]}.`)}}
+  else if(el.id==='sort'){UI.sort=el.value;render()}
+  else if(el.id==='lvMin'||el.id==='lvMax'){UI[el.id]=+el.value;if(UI.lvMin>UI.lvMax){if(el.id==='lvMin')UI.lvMax=UI.lvMin;else UI.lvMin=UI.lvMax}render()}
+  else if(el.id==='matSort'){UI.matSort=el.value;render()}
+  else if(el.id==='rawSort'){UI.rawSort=el.value;render()}
+  else if(el.id==='recProf'){UI.recProf=el.value;render()}
+  else if(el.id==='valuation'){S.settings={...S.settings,valuation:el.value};saveSettings();invalidate();render()}
+  else if(el.id==='feePct'){const v=Math.min(100,Math.max(0,parseFloat(el.value)||0));S.settings={...S.settings,feePct:v};saveSettings();render()}
+  else if(el.id==='qtyIn'){UI.qty=Math.max(1,parseInt(el.value)||1);render()}
+  else if(el.id==='importFile'){const f=el.files[0];if(f)f.text().then(t=>{$('#importText').value=t;$('#importMsg').textContent=`Loaded ${f.name}. Check it, then press Import.`})}
+  else if(el.id==='shotFile'){const f=el.files[0];if(f)readShot(f);el.value=''}
+  else if(el.dataset.rf==='optional'&&UI.draft){UI.draft.inputs[+el.dataset.row].optional=el.checked}
+});
+document.addEventListener('input',e=>{const el=e.target;
+  if(el.id==='rawQ'){UI.rawQ=el.value;render()}
+  else if(el.id==='craftQ'){UI.craftQ=el.value;render()}
+  else if(el.id==='recQ'){UI.recQ=el.value;render()}
+  else if(UI.draft&&el.dataset.f){UI.draft[el.dataset.f]=el.value}
+  else if(UI.draft&&el.dataset.rf&&el.dataset.rf!=='optional'){UI.draft.inputs[+el.dataset.row][el.dataset.rf]=el.value}
+});
+document.addEventListener('keydown',e=>{const el=e.target;
+  if(e.key==='Enter'&&(el.classList?.contains('cell-price')||el.classList?.contains('cell-name'))){e.preventDefault();el.blur()}
+  if(e.key==='Escape'){if(!$('#importModal').hidden){$('#importModal').hidden=true}else if(el.classList?.contains('cell-price')){const it=S.items.get(el.dataset.id);el.value=it?.price==null?'':fmt(it.price);el.blur()}}
+});
+$('#importModal').addEventListener('click',e=>{if(e.target.id==='importModal')$('#importModal').hidden=true});
+
+/* ---------- import / export ---------- */
+function parseCSV(text){const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;else if(c===','||c==='\t'){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows.map(r=>r.map(x=>x.trim())).filter(r=>r.some(x=>x!==''))}
+const truthy=v=>/^(1|y|yes|true|x|optional|additive)$/i.test(String(v??'').trim());
+function recipeFromObj(o){const out=o.output||o.name||o.item;if(!out)return null;
+  const ings=o.ingredients||o.inputs||o.required||o.items||[];
+  return {output:String(out),profession:o.profession||'',level:o.level??null,yield:o.yield??1,mesos:o.mesos??0,sellPrice:o.sellPrice??o.sell_price??null,
+    inputs:ings.map(i=>({name:String(i.name||i.item||''),qty:parseNum(i.qty??i.quantity??i.amount??1),optional:!!(i.optional||i.additive)})).filter(i=>i.name)}}
+function interpret(text){
+  text=String(text||'').trim();if(!text)throw new Error('Paste CSV or JSON first.');
+  if(text[0]==='{'||text[0]==='['){
+    let j;try{j=JSON.parse(text)}catch(e){throw new Error('That JSON could not be read: '+e.message)}
+    if(j&&!Array.isArray(j)&&Array.isArray(j.items)&&Array.isArray(j.recipes))return {backup:j};
+    const arr=Array.isArray(j)?j:Array.isArray(j.recipes)?j.recipes:[j];
+    const recipes=arr.map(recipeFromObj).filter(Boolean);if(!recipes.length)throw new Error('No recipes found in that JSON.');return {recipes,prices:[]}}
+  const rows=parseCSV(text);if(rows.length<2)throw new Error('Add a header row and at least one data row.');
+  const h=rows[0].map(x=>norm(x).replace(/[\s-]+/g,'_'));const col=(...n)=>h.findIndex(x=>n.includes(x));
+  const cI=col('ingredient','input','material','required','required_item'),cO=col('output','item','recipe','crafts','result');
+  if(cI>=0&&cO>=0){
+    const cP=col('profession','skill','category'),cL=col('level','lv'),cY=col('yield','makes'),cM=col('mesos','meso','fee','cost'),cS=col('sell_price','sell','price','sale_price'),cQ=col('qty','quantity','amount','count'),cX=col('optional','additive');
+    const map=new Map();
+    for(const r of rows.slice(1)){const o=r[cO];if(!o)continue;const k=norm(o);
+      if(!map.has(k))map.set(k,{output:o,profession:r[cP]||'',level:r[cL]||null,yield:r[cY]||1,mesos:r[cM]||0,sellPrice:cS>=0?r[cS]:null,inputs:[]});
+      const rec=map.get(k);if(cS>=0&&r[cS]&&!rec.sellPrice)rec.sellPrice=r[cS];
+      if(r[cI])rec.inputs.push({name:r[cI],qty:parseNum(cQ>=0?r[cQ]:1)||1,optional:cX>=0&&truthy(r[cX])})}
+    return {recipes:[...map.values()],prices:[]}}
+  const cN=col('name','item','material'),cPr=col('price','cost','value','mesos');
+  if(cN>=0&&cPr>=0)return {recipes:[],prices:rows.slice(1).filter(r=>r[cN]).map(r=>({name:r[cN],price:parseNum(r[cPr])}))};
+  throw new Error('The header needs either output + ingredient columns (recipes) or name + price columns (prices).');
+}
+function matchProf(p){const n=norm(p);return PROFESSIONS.find(x=>norm(x)===n)||(n?'Other':'Other')}
+async function applyImport(data){
+  let nr=0,np=0,nb=0;
+  if(data.backup){const b=data.backup;
+    for(const it of b.items||[]){if(it.id&&it.deleted){delItem(it.id);nb++}else if(it.id&&it.name){saveItem({...it});nb++}}
+    for(const r of b.recipes||[]){if(r.id&&r.deleted){delRecipe(r.id);nb++}else if(r.id&&r.outputId){saveRecipe({...r,inputs:(r.inputs||[]).map(i=>({...i}))});nb++}}
+    rebuild();
+    if(b.settings){S.settings={...S.settings,...b.settings};saveSettings()}invalidate();render();return `Restored ${nb} records from the backup.`}
+  for(const p of data.prices||[]){if(p.price==null||Number.isNaN(p.price))continue;const it=itemByName(p.name);
+    if(it)saveItem({...it,price:p.price,sample:false,updatedAt:now()});else saveItem({id:uid('item'),name:p.name.trim(),price:p.price,updatedAt:now()});np++}
+  for(const rc of data.recipes||[]){
+    let out=ensureItem(rc.output);const sell=parseNum(rc.sellPrice);
+    if(sell!=null&&!Number.isNaN(sell)){out={...out,price:sell,sample:false,updatedAt:now()};saveItem(out)}
+    const merged=new Map();for(const i of rc.inputs){if(norm(i.name)===norm(rc.output))continue;const it=ensureItem(i.name);const k=it.id+(i.optional?':o':'');merged.set(k,{itemId:it.id,qty:(merged.get(k)?.qty||0)+(Number(i.qty)||1),optional:!!i.optional})}
+    const existing=[...S.recipes.values()].find(r=>r.outputId===out.id);
+    const mesos=parseNum(rc.mesos);
+    saveRecipe({id:existing?.id||uid('recipe'),outputId:out.id,profession:matchProf(rc.profession),level:rc.level==null||rc.level===''?null:Number(rc.level),yield:Math.max(1,parseInt(rc.yield)||1),mesos:Number.isNaN(mesos)||mesos==null?0:mesos,inputs:[...merged.values()],updatedAt:now()});
+    nr++;UI.sel=existing?.id||UI.sel}
+  invalidate();
+  if(!UI.sel||!S.recipes.has(UI.sel)){const last=[...S.recipes.values()].pop();UI.sel=last?.id||null}
+  render();
+  return [nr?`${nr} recipe${nr>1?'s':''}`:'',np?`${np} price${np>1?'s':''}`:''].filter(Boolean).join(' and ')+' imported.';
+}
+async function doImport(text){const msg=$('#importMsg');
+  try{const data=interpret(text);const res=await applyImport(data);msg.textContent=res;toast(res);$('#importModal').hidden=true;$('#importText').value='';if(data.recipes?.length||data.backup){UI.draft=null;setTab(data.recipes?.length?'recipes':UI.tab)}}
+  catch(e){msg.innerHTML=`<span class="err">${esc(e.message)}</span>`}}
+async function readShot(file){
+  const msg=$('#shotMsg');if(!SAMPLE){msg.textContent='Reading screenshots isn’t available in this view.';return}
+  try{const lim=await SAMPLE.limits?.();if(lim&&!lim.images){msg.textContent='Reading screenshots isn’t available in this view.';return}}catch(e){}
+  msg.textContent='Reading the screenshot… this can take up to a minute.';
+  const prompt=`This is a screenshot of the MapleStory Classic Crafting Journal. Read the selected recipe (the large panel on the right).
+Return JSON only, in this shape:
+{"output":"item name","profession":"the highlighted tab, one of Smithing, Weaponcrafting, Tailoring, Woodcrafting, Leatherworking, Arcforge","level":7,"yield":1,"mesos":9000,"ingredients":[{"name":"Bronze Ingot","qty":4,"optional":false}]}
+Rules: each required item shows "have/need" — qty is the number AFTER the slash. The mesos row's needed amount (after the slash) is "mesos", not an ingredient. Items under ADDITIVE go in ingredients with "optional": true; if a name is cut off with "...", give the visible part without the dots. The yield is the small number on the item icon or in "Craft N <item>". Use the level shown for the selected item in the left list.`;
+  try{const data=await SAMPLE.json(prompt,{images:[file],modelTier:'default'});
+    const rc=recipeFromObj(data);if(!rc||!rc.inputs.length)throw {code:'parse'};
+    const existing=itemByName(rc.output);const rec=existing&&[...S.recipes.values()].find(r=>r.outputId===existing.id);
+    UI.draft={id:rec?.id||null,fromShot:true,outputName:rc.output,profession:matchProf(rc.profession),level:rc.level??'',yield:String(rc.yield||1),mesos:rc.mesos?fmt(parseNum(rc.mesos)):'',sellPrice:existing?.price!=null?fmt(existing.price):'',inputs:rc.inputs.map(i=>({name:i.name,qty:String(i.qty||1),optional:!!i.optional}))};
+    UI.draftErr=rec?'This item already has a recipe. Saving replaces it.':'';
+    msg.textContent='';$('#importModal').hidden=true;setTab('recipes');
+  }catch(e){msg.innerHTML=`<span class="err">${e&&e.code==='not_granted'?'Claude wasn’t allowed to read the image. You can still add the recipe by hand.':e&&e.code==='rate_limited'?'Too many requests just now. Try again in a minute.':'Couldn’t read a recipe from that image. Try a sharper, uncropped screenshot of the recipe panel.'}</span>`}
+}
+async function doExport(){
+  const data=JSON.stringify({exportedAt:now(),note:'Your prices and recipe changes on top of the game catalog',items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings},null,2);
+  if(DOWNLOADS){try{await DOWNLOADS.save({filename:'crafting-calculator-backup.json',data});return}catch(e){if(e&&e.code==='declined')return}}
+  try{await navigator.clipboard.writeText(data);toast('Backup JSON copied to your clipboard.')}catch(e){$('#importModal').hidden=false;$('#importText').value=data;$('#importMsg').textContent='Copy this backup JSON and keep it somewhere safe.';$('#importText').select()}
+}
+
+/* ---------- boot ---------- */
+function fromHash(){const h=(location.hash||'').slice(1);if(['raw','craftable','recipes'].includes(h))UI.tab=h}
+window.addEventListener('hashchange',()=>{fromHash();render()});
+fromHash();render();initStore();
+</script>
+
+</body>
+</html>
