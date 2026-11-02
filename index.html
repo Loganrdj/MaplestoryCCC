@@ -264,6 +264,8 @@ Processed Leather,300</pre></div>
 </div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="catalog.js"></script>
+<script src="prices.js"></script>
 <script>
 const PROFESSIONS=['Smithing','Weaponcrafting','Tailoring','Woodcrafting','Leatherworking','Arcforge','Other'];
 const EXAMPLE_CSV=`output,profession,level,yield,mesos,sell_price,ingredient,qty,optional
@@ -369,7 +371,7 @@ function ensureItem(name){const ex=itemByName(name);if(ex)return ex;const it={id
 let lsT;function persistLocal(){if(DB)return;clearTimeout(lsT);lsT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify({items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings}))}catch(e){}},200)}
 
 async function loadCatalog(){
-  try{const r=await fetch('catalog.json');if(!r.ok)throw new Error('HTTP '+r.status);const c=await r.json();
+  try{const c=window.CRAFT_CATALOG||await fetch('catalog.json').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
     c.items.forEach(i=>BASE.items.set(i.id,i));c.recipes.forEach(x=>BASE.recipes.set(x.id,x));catalogInfo={source:c.source,fetched:c.fetched,items:c.items.length,recipes:c.recipes.length}}
   catch(e){catalogErr='The game catalog didn’t load, so only your own items and recipes are shown.'}
 }
@@ -377,6 +379,7 @@ async function loadLocal(){
   S.mode='local';let raw=null;
   try{raw=localStorage.getItem(LSKEY)}catch(e){}
   let d=null;try{d=raw?JSON.parse(raw):null}catch(e){}
+  if(!d&&window.SEED_PRICES)d=window.SEED_PRICES;
   if(!d){try{const r=await fetch('prices.json');if(r.ok)d=await r.json()}catch(e){}}
   if(d){(d.items||[]).forEach(i=>OV.items.set(i.id,i));(d.recipes||[]).forEach(r=>OV.recipes.set(r.id,r));if(d.settings)S.settings={...S.settings,...d.settings}}
   rebuild();render();
@@ -830,6 +833,7 @@ Rules: each required item shows "have/need" — qty is the number AFTER the slas
 async function doExport(){
   const data=JSON.stringify({exportedAt:now(),note:'Your prices and recipe changes on top of the game catalog',items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings},null,2);
   if(DOWNLOADS){try{await DOWNLOADS.save({filename:'crafting-calculator-backup.json',data});return}catch(e){if(e&&e.code==='declined')return}}
+  if(!window.claude){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='crafting-calculator-backup.json';document.body.appendChild(a);a.click();a.remove();toast('Backup saved to your downloads.');return}catch(e){}}
   try{await navigator.clipboard.writeText(data);toast('Backup JSON copied to your clipboard.')}catch(e){$('#importModal').hidden=false;$('#importText').value=data;$('#importMsg').textContent='Copy this backup JSON and keep it somewhere safe.';$('#importText').select()}
 }
 

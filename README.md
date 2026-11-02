@@ -21,20 +21,20 @@ A crafting cost and profit calculator for MapleStory Classic. Enter what materia
 | --- | --- |
 | `index.html` | The whole app: one page, no build step. |
 | `catalog.json` | Game data: 421 items and 366 recipes across Smithing, Weaponcrafting, Tailoring, Woodcrafting, Leatherworking and Arcforge. |
-| `prices.json` | Starting market prices. Loaded the first time the app opens in a browser that has none saved. |
+| `catalog.js` | The same data as `catalog.json`, as a script, so the page works when opened from the folder. |
+| `prices.json` / `prices.js` | Starting market prices, used the first time the app opens in a browser. |
 
 ## Running it
 
-The app loads `catalog.json` and `prices.json` with `fetch`, so it has to be served over HTTP, not opened as a file:
+Double-click `index.html`. It opens in your browser with no server needed.
 
-```sh
-python3 -m http.server 8000
-# then open http://localhost:8000
-```
+Prices save automatically in that browser as you type them, and they're still there next time you open the file. The first time it opens, it starts from the prices in `prices.js`.
 
-It also works on GitHub Pages: Settings → Pages → deploy from the `main` branch.
+- **Move prices to another browser or computer:** use **Export backup**, then **Import** there.
+- **Change the starting prices for a fresh browser:** edit `prices.js` (and `prices.json`).
+- **Browser storage is per browser:** prices saved in Chrome won't show in Edge, and clearing site data clears them.
 
-Prices you change are saved in your browser's local storage. To move them between browsers, use **Export backup** and **Import**. To change the starting prices for everyone, edit `prices.json`.
+`catalog.js` and `prices.js` hold the same data as `catalog.json` and `prices.json`. They're scripts so the page works when opened straight from the folder. Served over HTTP (for example GitHub Pages), the page works either way.
 
 ## How costs are calculated
 

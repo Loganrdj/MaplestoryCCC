@@ -1,5 +1,5 @@
 {
- "note": "Market prices entered in the Crafting Calculator, layered on top of catalog.json",
+ "note": "Starting market prices. The app uses these only the first time it opens in a browser; after that your own saved prices win.",
  "exported": "2026-11-02",
  "items": [
   {
@@ -124,6 +124,14 @@
    "updatedAt": "2026-11-02T07:28:37.836Z"
   },
   {
+   "id": "i1002122",
+   "name": "Great Blue Helmet",
+   "price": 15000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:30:35.209Z"
+  },
+  {
    "id": "i1082001",
    "name": "Juno",
    "price": 1500,
@@ -146,6 +154,30 @@
    "priceSource": null,
    "sample": false,
    "updatedAt": "2026-11-02T07:27:49.133Z"
+  },
+  {
+   "id": "i1082040",
+   "name": "Steel Briggon",
+   "price": 22000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:30:42.329Z"
+  },
+  {
+   "id": "i1082041",
+   "name": "Yellow Briggon",
+   "price": 13500,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:30:46.464Z"
+  },
+  {
+   "id": "i1082042",
+   "name": "Dark Briggon",
+   "price": 12000,
+   "priceSource": null,
+   "sample": false,
+   "updatedAt": "2026-11-02T07:30:51.677Z"
   },
   {
    "id": "i3030000",
