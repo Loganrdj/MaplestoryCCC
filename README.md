@@ -30,7 +30,8 @@ Double-click `index.html`. It opens in your browser with no server needed.
 
 Prices save automatically in that browser as you type them, and they're still there next time you open the file. The first time it opens, it starts from the prices in `prices.js`.
 
-- **Move prices to another browser or computer:** use **Export backup**, then **Import** there.
+- **Save prices into the folder (Chrome or Edge):** click **Save to folder** and pick this `MaplestoryCCC` folder. From then on every change rewrites `prices.json` and `prices.js` here, so `git commit` picks up your latest prices. After restarting the browser the button reads **Reconnect folder**; one click resumes saving. If `prices.json` is newer than what the browser has (for example after a `git pull`), the page loads it.
+- **Move prices to another browser or computer:** use **Export backup**, then **Import** there, or link the folder there too.
 - **Change the starting prices for a fresh browser:** edit `prices.js` (and `prices.json`).
 - **Browser storage is per browser:** prices saved in Chrome won't show in Edge, and clearing site data clears them.
 

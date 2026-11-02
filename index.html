@@ -228,6 +228,7 @@ tr.total td{font-weight:700;border-top:1px solid var(--line)}
       <label class="field"><span>Sale fee %</span>
         <input type="number" id="feePct" min="0" max="100" step="0.5" style="width:90px" value="0">
       </label>
+      <button class="btn" id="fsBtn" data-act="fs" hidden>Save to folder</button>
       <button class="btn" data-act="open-import">Import</button>
       <button class="btn" data-act="export">Export backup</button>
     </div>
@@ -375,13 +376,41 @@ function saveRecipe(r){OV.recipes.set(r.id,r);S.recipes.set(r.id,r);return write
 function delRecipe(id){S.recipes.delete(id);if(BASE.recipes.has(id)){OV.recipes.set(id,{id,deleted:true});return writeDoc('recipes',id,{deleted:true})}OV.recipes.delete(id);return removeDoc('recipes',id)}
 function saveSettings(){if(DB)return queueWrite('meta/settings',()=>DB.doc('meta/settings').set({...S.settings}));persistLocal()}
 function ensureItem(name){const ex=itemByName(name);if(ex)return ex;const it={id:uid('item'),name:String(name).trim(),price:null,updatedAt:now()};saveItem(it);return it}
-let lsT;function persistLocal(){if(DB)return;clearTimeout(lsT);lsT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify({items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings}))}catch(e){}},200)}
+let lsT;function persistLocal(){if(DB)return;clearTimeout(lsT);lsT=setTimeout(()=>{try{localStorage.setItem(LSKEY,JSON.stringify({savedAt:now(),items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings}))}catch(e){}fsSchedule()},200)}
 
 async function loadCatalog(){
   try{const c=window.CRAFT_CATALOG||await fetch('catalog.json').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
     c.items.forEach(i=>BASE.items.set(i.id,i));c.recipes.forEach(x=>BASE.recipes.set(x.id,x));catalogInfo={source:c.source,fetched:c.fetched,items:c.items.length,recipes:c.recipes.length}}
   catch(e){catalogErr='The game catalog didn’t load, so only your own items and recipes are shown.'}
 }
+
+/* ---------- save to a folder (Chrome/Edge, local copy only) ----------
+   After the viewer picks their project folder once, every change rewrites prices.json and prices.js there.
+   The folder handle is remembered in IndexedDB; after a browser restart one click re-grants access. */
+const FS={supported:'showDirectoryPicker' in window&&!window.claude,dir:null,state:'off',at:null,err:''};
+function idb(mode,fn){return new Promise((res,rej)=>{const o=indexedDB.open('mscc-files',1);o.onupgradeneeded=()=>o.result.createObjectStore('h');o.onerror=()=>rej(o.error);
+  o.onsuccess=()=>{const t=o.result.transaction('h',mode);const r=fn(t.objectStore('h'));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)}})}
+const idbGet=k=>idb('readonly',st=>st.get(k)),idbSet=(k,v)=>idb('readwrite',st=>st.put(v,k));
+function snapshot(){return {note:'Your market prices and recipe changes, saved by the Crafting Calculator. Loaded on top of catalog.json.',exported:now(),items:[...OV.items.values()],recipes:[...OV.recipes.values()],settings:S.settings}}
+async function writeFile(name,text){const fh=await FS.dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(text);await w.close()}
+let fsT,fsBusy=Promise.resolve();
+function fsSchedule(){if(FS.state!=='on')return;clearTimeout(fsT);fsT=setTimeout(()=>{fsBusy=fsBusy.then(fsWrite)},400)}
+async function fsWrite(){if(FS.state!=='on')return;try{const d=snapshot();const json=JSON.stringify(d,null,1);
+  await writeFile('prices.json',json+'\n');await writeFile('prices.js','// Starting market prices, loaded the first time the app opens in a browser.\nwindow.SEED_PRICES = '+json+';\n');
+  FS.at=d.exported;FS.err=''}catch(e){FS.err='Couldn’t write to the folder. Click Reconnect folder.';FS.state='reconnect'}renderFs()}
+async function fsRead(){try{const fh=await FS.dir.getFileHandle('prices.json');return JSON.parse(await (await fh.getFile()).text())}catch(e){return null}}
+function adopt(d){OV.items=new Map((d.items||[]).map(i=>[i.id,i]));OV.recipes=new Map((d.recipes||[]).map(r=>[r.id,r]));if(d.settings)S.settings={...S.settings,...d.settings};rebuild();persistLocal();render()}
+async function fsSync(){/* newer side wins: the file if it was saved after this browser's last change, otherwise this browser */
+  const f=await fsRead();let local=null;try{local=JSON.parse(localStorage.getItem(LSKEY)||'null')}catch(e){}
+  if(f&&f.exported&&(!local||!local.savedAt||f.exported>local.savedAt)){adopt(f);FS.at=f.exported;renderFs();toast('Loaded prices from prices.json.')}else{await fsWrite()}}
+async function fsInit(){if(!FS.supported)return renderFs();try{const h=await idbGet('dir');if(h){FS.dir=h;const p=await h.queryPermission({mode:'readwrite'});FS.state=p==='granted'?'on':'reconnect';if(FS.state==='on')await fsSync()}}catch(e){}renderFs()}
+async function fsConnect(){try{const h=await window.showDirectoryPicker({id:'mscc',mode:'readwrite'});FS.dir=h;await idbSet('dir',h);FS.state='on';
+  const f=await fsRead();if(f&&f.items&&f.items.length&&f.exported&&f.exported>(JSON.parse(localStorage.getItem(LSKEY)||'{}').savedAt||'')){adopt(f);FS.at=f.exported;toast('Folder linked. Loaded the newer prices from prices.json.')}else{await fsWrite();toast('Folder linked. Saving to prices.json.')}}
+  catch(e){if(e&&e.name!=='AbortError')toast('Couldn’t link that folder.')}renderFs()}
+async function fsReconnect(){try{const p=await FS.dir.requestPermission({mode:'readwrite'});if(p==='granted'){FS.state='on';await fsSync()}}catch(e){}renderFs()}
+function renderFs(){const b=document.getElementById('fsBtn');if(!b)return;b.hidden=!FS.supported;
+  b.textContent=FS.state==='on'?`Saving to ${FS.dir?.name||'folder'}/prices.json`:FS.state==='reconnect'?'Reconnect folder':'Save to folder';
+  b.classList.toggle('primary',FS.state==='reconnect');b.title=FS.state==='on'?(FS.at?'Last saved '+new Date(FS.at).toLocaleTimeString():'')+' · Click to pick a different folder':FS.state==='reconnect'?'Click to let the page keep writing prices.json in your folder':'Pick your MaplestoryCCC folder. Every change then updates prices.json there.'}
 async function loadLocal(){
   S.mode='local';let raw=null;
   try{raw=localStorage.getItem(LSKEY)}catch(e){}
@@ -389,7 +418,7 @@ async function loadLocal(){
   if(!d&&window.SEED_PRICES)d=window.SEED_PRICES;
   if(!d){try{const r=await fetch('prices.json');if(r.ok)d=await r.json()}catch(e){}}
   if(d){(d.items||[]).forEach(i=>OV.items.set(i.id,i));(d.recipes||[]).forEach(r=>OV.recipes.set(r.id,r));if(d.settings)S.settings={...S.settings,...d.settings}}
-  rebuild();render();
+  rebuild();render();fsInit();
 }
 async function initStore(){
   const use=window.claude&&window.claude.use?n=>window.claude.use(n).catch(()=>null):async()=>null;
@@ -712,6 +741,7 @@ const ACT={
   'make-craft':t=>{const it=S.items.get(t.dataset.id);if(!it)return;
     if(it.asRaw||[...S.recipes.values()].some(r=>r.outputId===it.id)){saveItem({...it,asRaw:false,updatedAt:now()});invalidate();toast(`${it.name} moved back to Craftable Items.`);render();return}
     UI.draft={...blankDraft(),outputName:it.name};UI.draftErr='';toast(`Add the recipe for ${it.name}. Saving it moves the item to Craftable Items.`);setTab('recipes')},
+  fs:()=>{FS.state==='reconnect'?fsReconnect():fsConnect()},
   'plan-mode':t=>{UI.planMode=t.dataset.mode;render()},
   'craft-view':t=>{UI.craftView=t.dataset.view;render()},
   'set-role':t=>{const it=S.items.get(t.dataset.id);if(!it)return;saveItem({...it,role:t.dataset.role,updatedAt:now()});invalidate();toast(t.dataset.role==='material'?`${it.name} moved to Crafting materials.`:`${it.name} moved to Items to sell.`);render()},
