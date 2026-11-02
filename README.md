@@ -47,3 +47,5 @@ Prices save automatically in that browser as you type them, and they're still th
 ## Data source
 
 Recipe and item data comes from [metaroad.gg](https://metaroad.gg/maplestory-classic/crafting-calculator) (fetched November 2026). Market prices are entered by hand.
+
+Item icons come from [OSMS Data Explorer](https://osmsdataexplorer.com) by @ohmi (CC BY 4.0), with [maplestory.io](https://maplestory.io) as a fallback. Game content and art are © Nexon. This project is unofficial and not affiliated with Nexon.

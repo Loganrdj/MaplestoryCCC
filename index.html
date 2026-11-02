@@ -104,6 +104,7 @@ tr.click:hover td{background:var(--panel-2)}
 .ic-tile{font-family:var(--font-display);font-weight:600;font-size:12px;color:var(--ink-3)}
 .ic-lg{width:40px;height:40px;background:color-mix(in srgb, var(--panel) 92%, transparent)}
 .ic-lg img{max-width:36px;max-height:36px}
+.status a{color:inherit}
 .shop .tname{display:flex;align-items:center;gap:8px}
 .cell-kind{padding:4px 6px;font-size:13px}
 .cell-price{width:120px;text-align:right;font-family:var(--font-num);font-size:13px;padding:5px 8px}
@@ -427,7 +428,7 @@ function renderStatus(){
   const raws=rawItems().length,crafts=activeRecipes().length;
   const where=S.mode==='db'?(S.stale?'<span class="dot local"></span>Saved data can’t be reached right now; showing what loaded':'<span class="dot"></span>Saved to this artifact'):'<span class="dot local"></span>Saving in this browser only';
   const priced=[...S.items.values()].filter(i=>i.price!=null&&i.priceSource!=='npc'&&!IDX.byOutput.has(i.id)).length;
-  st.innerHTML=`${where}<span>·</span><span>${raws} raw materials (${priced} with your prices)</span><span>·</span><span>${crafts} recipes</span>${catalogInfo?`<span>·</span><span>Game data from metaroad.gg</span>`:''}`;
+  st.innerHTML=`${where}<span>·</span><span>${raws} raw materials (${priced} with your prices)</span><span>·</span><span>${crafts} recipes</span>${catalogInfo?`<span>·</span><span>Game data from metaroad.gg</span>`:''}<span>·</span><span>Icons from <a href="https://osmsdataexplorer.com" target="_blank" rel="noopener">OSMS Data Explorer</a> (CC BY 4.0)</span>`;
 }
 const activeRecipes=()=>[...S.recipes.values()].filter(r=>!S.items.get(r.outputId)?.asRaw);
 function rawItems(){return [...S.items.values()].filter(i=>!IDX.byOutput.has(i.id))}
@@ -496,11 +497,13 @@ function materialPlan(r,n,mode){
 const lvlOk=r=>{const l=Number(r.level)||0;return l>=UI.lvMin&&l<=UI.lvMax};
 function levelPicker(){const o=v=>[1,2,3,4,5,6,7,8,9,10].map(i=>`<option value="${i}" ${v===i?'selected':''}>${i}</option>`).join('');
   return `<label class="field" style="flex-direction:row;align-items:center;gap:6px"><span>Level</span><select id="lvMin" aria-label="Lowest profession level">${o(UI.lvMin)}</select><span class="meta">to</span><select id="lvMax" aria-label="Highest profession level">${o(UI.lvMax)}</select></label>`}
-/* Item icons from maplestory.io (GMS v83 data). Classic-only items have no icon there and get a lettered tile. */
-const NO_ICON=new Set([3000002, 3000003, 3000005, 3000006, 3000028, 3000029, 3000031, 3000032, 3020001, 3020003, 3030000, 3030001, 3030002, 3030003, 3030004, 3030005, 4003006, 4003007, 4003008, 4003009, 4003010, 4003011, 4003012, 4003013, 4003014, 4010100, 4010101, 4010102, 4010103, 4010104, 4010105, 4010106, 4010107, 4020100, 4020101, 4020102, 4020103, 4020104, 4020105, 4020106, 4020107, 4020108]);
+/* Item icons: OSMS Data Explorer (Classic client art, CC BY 4.0) first, maplestory.io (GMS v83) as backup, then a lettered tile. */
+const ICON_SRC=[n=>`https://osmsdataexplorer.com/data/current/images/items/${n}.png`,n=>`https://maplestory.io/api/GMS/83/item/${+n}/icon`];
+function iconFail(img){const i=+img.dataset.i+1;if(i<ICON_SRC.length){img.dataset.i=i;img.src=ICON_SRC[i](img.dataset.n);return}
+  const w=img.parentNode;w.classList.add('ic-tile');w.textContent=img.dataset.l}
 function icon(id,cls){const n=/^i(\d{7})$/.exec(id||'');const name=itemName(id);const letter=esc((name||'?').trim()[0]||'?');
-  if(!n||NO_ICON.has(+n[1]))return `<span class="ic ic-tile ${cls||''}" aria-hidden="true">${letter}</span>`;
-  return `<span class="ic ${cls||''}" aria-hidden="true"><img src="https://maplestory.io/api/GMS/83/item/${n[1]}/icon" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('ic-tile');this.parentNode.textContent='${letter}'"></span>`}
+  if(!n)return `<span class="ic ic-tile ${cls||''}" aria-hidden="true">${letter}</span>`;const n8=n[1].padStart(8,'0');
+  return `<span class="ic ${cls||''}" aria-hidden="true"><img src="${ICON_SRC[0](n8)}" alt="" loading="lazy" decoding="async" data-n="${n8}" data-i="0" data-l="${letter}" onerror="iconFail(this)"></span>`}
 function roleOf(it){if(!it)return 'product';if(it.role)return it.role;return /^i4\d{6}$/.test(it.id)?'material':'product'}
 function buyVsCraft(r){const c=craftCost(r);const it=S.items.get(r.outputId);const market=it&&it.price!=null?it.price:null;const complete=c.missing.size===0&&!c.cycle;
   const save=market==null||!complete?null:market-c.perUnit;
