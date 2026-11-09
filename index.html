@@ -237,6 +237,9 @@ tr.total td{font-weight:700;border-top:1px solid var(--line)}
 .calc-sum .big .val{font-size:22px}
 .calc-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .calc-line .field input{width:120px;text-align:right;font-family:var(--font-num)}
+.calc-body>*{flex-shrink:0}
+.crow .pick{grid-column:1 / -1}
+.crow .pick select{width:100%;font-size:12.5px;padding:5px 6px}
 @media (min-width:1300px){body.calc-open .wrap{max-width:none;margin-right:440px;margin-left:0}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -712,17 +715,39 @@ function viewEditor(){
 
 /* ---------- profit calculator drawer ----------
    What-if prices live only in CALC until the viewer clicks "Save changed prices". */
-const CALC={rid:null,mode:'direct',n:1,txt:new Map(),sellTxt:null,feeTxt:null};
-function calcOpen(rid){if(CALC.rid!==rid){CALC.rid=rid;CALC.txt=new Map();CALC.sellTxt=null;CALC.n=1}renderCalc();
+const CALC={rid:null,mode:'direct',n:1,txt:new Map(),pick:new Map(),sellTxt:null,feeTxt:null};
+function calcOpen(rid){if(CALC.rid!==rid){CALC.rid=rid;CALC.txt=new Map();CALC.pick=new Map();CALC.sellTxt=null;CALC.n=1}renderCalc();
   try{document.getElementById('calc').querySelector('.calc-body').scrollTop=0}catch(e){}}
 function calcClose(){CALC.rid=null;render()}
 const savedPrice=id=>{const p=S.items.get(id)?.price;return p==null?null:p};
 function craftFallback(id){if(!IDX.byOutput.has(id))return null;const v=unitValue(id);return v.source==='craft'&&v.missing.size===0&&!v.cycle?v.value:null}
 function whatIf(id){if(CALC.txt.has(id)){const v=parseNum(CALC.txt.get(id));return Number.isNaN(v)?null:v}const sp=savedPrice(id);return sp!=null?sp:craftFallback(id)}
-function calcRows(r){const n=Math.max(1,CALC.n|0);
-  if(CALC.mode==='raw'){const plan=materialPlan(r,n,'raw');return {rows:plan.buy.map(b=>({id:b.id,qty:b.qty})),fees:plan.mesos,crafts:plan.crafts}}
-  const m=new Map();for(const i of r.inputs||[])if(!i.optional)m.set(i.itemId,(m.get(i.itemId)||0)+i.qty*n);
-  return {rows:[...m].map(([id,qty])=>({id,qty})),fees:(Number(r.mesos)||0)*n,crafts:[]}}
+/* Per-part choices: CALC.pick maps an item id to 'buy' or a recipe id. Without a choice, "Buy the parts"
+   buys anything that has a market price, and "Buy raw" crafts every part with its cheapest recipe. */
+function recipeUnitCost(rec){let t=Number(rec.mesos)||0;for(const i of rec.inputs||[]){if(i.optional)continue;const p=whatIf(i.itemId);if(p==null)return null;t+=p*i.qty}return t/yieldOf(rec)}
+function cheapestRecipe(id,root){let best=null,bc=Infinity;for(const rec of IDX.byOutput.get(id)||[]){if((rec.inputs||[]).some(i=>!i.optional&&(i.itemId===id||i.itemId===root)))continue;
+  const c=recipeUnitCost(rec);const k=c==null?Infinity:c;if(!best||k<bc){best=rec;bc=k}}return best}
+function calcChoice(id,root){if(id===root||!IDX.byOutput.has(id))return null;const ch=CALC.pick.get(id);
+  if(ch==='buy')return null;if(ch&&S.recipes.has(ch))return S.recipes.get(ch);
+  if(CALC.mode==='direct'&&savedPrice(id)!=null)return null;return cheapestRecipe(id,root)}
+function calcRows(r){const n=Math.max(1,CALC.n|0),root=r.outputId;
+  const depth=new Map(),seen=new Set([root]);
+  const walk=(rec,d)=>{for(const i of rec.inputs||[]){if(i.optional)continue;const id=i.itemId;if(seen.has(id)||d>30||(depth.get(id)??-1)>=d)continue;depth.set(id,d);const sub=calcChoice(id,root);if(sub){seen.add(id);walk(sub,d+1);seen.delete(id)}}};
+  walk(r,1);
+  const demand=new Map();let fees=(Number(r.mesos)||0)*n;
+  for(const i of r.inputs||[])if(!i.optional)demand.set(i.itemId,(demand.get(i.itemId)||0)+i.qty*n);
+  const rows=[],crafts=[];
+  for(const id of [...depth.keys()].sort((a,b)=>depth.get(a)-depth.get(b))){const need=demand.get(id)||0;if(!need)continue;const sub=calcChoice(id,root);
+    if(sub){const y=yieldOf(sub);const c=Math.ceil(need/y-1e-9);const f=c*(Number(sub.mesos)||0);fees+=f;crafts.push({id,need,crafts:c,made:c*y,extra:c*y-need,recipe:sub,fee:f});
+      for(const i of sub.inputs||[])if(!i.optional)demand.set(i.itemId,(demand.get(i.itemId)||0)+i.qty*c)}
+    else rows.push({id,qty:need})}
+  return {rows,fees,crafts}}
+function recipeOptionLabel(rec){const ins=(rec.inputs||[]).filter(i=>!i.optional).map(i=>`${fmtQty(i.qty)} ${itemName(i.itemId)}`).join(' + ');
+  const u=recipeUnitCost(rec);return `Craft: ${ins}${yieldOf(rec)>1?` (makes ${yieldOf(rec)})`:''} · ${u==null?'price missing':'≈ '+fmtUnit(u)+' each'}`}
+function pickSelect(id,current){const sp=CALC.txt.has(id)?whatIf(id):savedPrice(id);const recs=IDX.byOutput.get(id)||[];
+  return `<div class="pick"><select data-pick="${id}" id="pk-${id}" aria-label="How to get ${esc(itemName(id))}">
+    <option value="buy" ${current==null?'selected':''}>Buy it${sp!=null?` · ${fmtUnit(sp)} each`:' · no market price set'}</option>
+    ${recs.map(rec=>`<option value="${rec.id}" ${current&&current.id===rec.id?'selected':''}>${esc(recipeOptionLabel(rec))}</option>`).join('')}</select></div>`}
 function calcNumbers(r){const {rows,fees,crafts}=calcRows(r);let cost=fees,missing=0;
   for(const x of rows){x.price=whatIf(x.id);x.total=x.price==null?null:x.price*x.qty;if(x.price==null)missing++;else cost+=x.total}
   const n=Math.max(1,CALC.n|0),y=yieldOf(r),units=n*y;
@@ -739,7 +764,7 @@ function renderCalc(){const el=document.getElementById('calc');if(!el)return;con
   const priceIn=(id,qty,price,total)=>{const sp=savedPrice(id);const cf=sp==null&&!CALC.txt.has(id)?craftFallback(id):null;const txt=CALC.txt.has(id)?CALC.txt.get(id):(sp!=null?fmt(sp):cf!=null?fmtUnit(cf):'');const ch=CALC.txt.has(id)&&price!=null&&price!==sp;
     return `<div class="crow"><div class="nm">${icon(id)}<span class="t" title="${esc(itemName(id))}">${esc(itemName(id))}</span></div><div class="num">${fmtQty(qty)}</div>
       <input id="cp-${id}" data-cp="${id}" value="${esc(txt)}" placeholder="Price" inputmode="decimal" class="${ch?'changed':price==null?'empty':''}" aria-label="Price of ${esc(itemName(id))}">
-      <div class="num">${total==null?'—':fmt(total)}</div>${ch?`<div class="was">saved ${sp==null?'none':fmt(sp)}</div>`:cf!=null?`<div class="was">no market price · your craft cost</div>`:''}</div>`};
+      <div class="num">${total==null?'—':fmt(total)}</div>${ch?`<div class="was">saved ${sp==null?'none':fmt(sp)}</div>`:cf!=null?`<div class="was">no market price · your craft cost</div>`:''}${IDX.byOutput.has(id)?pickSelect(id,null):''}</div>`};
   el.hidden=false;
   el.innerHTML=`<div class="calc-head">${icon(r.outputId,'ic-lg')}<div style="flex:1;min-width:0"><h2>${esc(it?.name)}</h2><div class="meta">${esc(r.profession||'')} · Lv ${esc(r.level??'—')}${yieldOf(r)>1?` · makes ${yieldOf(r)}`:''}</div></div>
     <button class="btn small" data-act="calc-close" aria-label="Close calculator">Close</button></div>
@@ -750,7 +775,8 @@ function renderCalc(){const el=document.getElementById('calc');if(!el)return;con
     <div class="calc-rows"><div class="crow head"><span>Buy</span><span style="text-align:right">Qty</span><span style="text-align:right">Price each</span><span style="text-align:right">Total</span></div>
       ${c.rows.map(x=>priceIn(x.id,x.qty,x.price,x.total)).join('')||'<div class="crow"><span class="meta">Nothing to buy.</span></div>'}
       <div class="crow"><div class="nm"><span class="coin"></span><span class="t">Crafting fees${c.crafts.length?` (${c.crafts.length+1} steps)`:''}</span></div><div></div><div></div><div class="num">${fmt(c.fees)}</div></div></div>
-    ${c.crafts.length?`<div class="meta">You craft: ${c.crafts.map(x=>`${esc(itemName(x.id))} ×${fmtQty(x.made)}`).join(', ')}</div>`:''}
+    ${c.crafts.length?`<div class="calc-rows"><div class="crow head"><span>You craft</span><span style="text-align:right">Make</span><span></span><span style="text-align:right">Fee</span></div>
+      ${c.crafts.map(x=>`<div class="crow"><div class="nm">${icon(x.id)}<span class="t">${esc(itemName(x.id))}</span></div><div class="num">${fmtQty(x.made)}</div><div class="meta" style="text-align:right">${x.crafts} craft${x.crafts>1?'s':''}${x.extra>0?` · ${fmtQty(x.extra)} spare`:''}</div><div class="num">${fmt(x.fee)}</div>${pickSelect(x.id,x.recipe)}</div>`).join('')}</div>`:''}
     <div class="calc-line"><label class="field"><span>Sell price each</span><input id="calcSell" value="${esc(CALC.sellTxt!=null?CALC.sellTxt:(c.sell==null?'':fmt(c.sell)))}" placeholder="Set price" inputmode="decimal" class="${sellChanged?'changed':''}"></label>
       <label class="field"><span>Sale fee %</span><input id="calcFee" type="number" min="0" max="100" step="0.5" style="width:80px" value="${esc(CALC.feeTxt!=null?CALC.feeTxt:(S.settings.feePct??0))}"></label></div>
     <div class="calc-sum">
@@ -763,7 +789,7 @@ function renderCalc(){const el=document.getElementById('calc');if(!el)return;con
     ${c.missing?`<div class="notice">${c.missing} item${c.missing>1?'s need':' needs'} a price before profit can be worked out.</div>`:''}
     <div class="actions"><button class="btn" data-act="calc-reset" ${CALC.txt.size||CALC.sellTxt!=null||CALC.feeTxt!=null?'':'disabled'}>Reset to saved</button>
       <button class="btn primary" data-act="calc-save" ${changed.length||sellChanged?'':'disabled'}>Save ${changed.length+(sellChanged?1:0)||''} changed price${changed.length+(sellChanged?1:0)===1?'':'s'}</button></div>
-    <p class="meta" style="margin:0">Prices you type here are a what-if: they don’t change your saved prices until you click Save.</p>
+    <p class="meta" style="margin:0">Prices you type here are a what-if: they don’t change your saved prices until you click Save. Parts with more than one recipe have a dropdown: buy them, or pick which recipe to craft them with.</p>
   </div>`;
   if(fid){const f=document.getElementById(fid);if(f){f.focus();if(sel&&f.setSelectionRange)try{f.setSelectionRange(sel[0],sel[1])}catch(e){}}}
 }
@@ -806,12 +832,12 @@ function saveDraft(){
 }
 const ACT={
   tab:t=>setTab(t.dataset.tab),
-  'open-recipe':t=>{UI.sel=t.dataset.id;if(CALC.rid!==t.dataset.id){CALC.rid=t.dataset.id;CALC.txt=new Map();CALC.sellTxt=null;CALC.n=1}render()},
+  'open-recipe':t=>{UI.sel=t.dataset.id;if(CALC.rid!==t.dataset.id){CALC.rid=t.dataset.id;CALC.txt=new Map();CALC.pick=new Map();CALC.sellTxt=null;CALC.n=1}render()},
   'calc-close':()=>calcClose(),
   'calc-mode':t=>{CALC.mode=t.dataset.mode;renderCalc()},
   'calc-n':t=>{CALC.n=Math.max(1,(CALC.n|0)+ +t.dataset.d);renderCalc()},
   'calc-full':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.qty=1;setTab('recipes')},
-  'calc-reset':()=>{CALC.txt=new Map();CALC.sellTxt=null;CALC.feeTxt=null;renderCalc()},
+  'calc-reset':()=>{CALC.txt=new Map();CALC.pick=new Map();CALC.sellTxt=null;CALC.feeTxt=null;renderCalc()},
   'calc-save':()=>{const r=S.recipes.get(CALC.rid);let k=0;for(const id of CALC.txt.keys()){const v=whatIf(id);const it=S.items.get(id);if(it&&v!=null&&v!==it.price){saveItem({...it,price:v,sample:false,priceSource:null,updatedAt:now()});k++}}
     if(r&&CALC.sellTxt!=null){const v=parseNum(CALC.sellTxt);const it=S.items.get(r.outputId);if(it&&!Number.isNaN(v)&&v!=null&&v!==it.price){saveItem({...it,price:v,sample:false,priceSource:null,updatedAt:now()});k++}}
     CALC.txt=new Map();CALC.sellTxt=null;invalidate();render();toast(`Saved ${k} price${k===1?'':'s'}.`)},
@@ -868,6 +894,7 @@ document.addEventListener('submit',e=>{e.preventDefault();
   if(e.target.id==='recipeForm')saveDraft();
 });
 document.addEventListener('change',e=>{const el=e.target;
+  if(el.dataset&&el.dataset.pick){CALC.pick.set(el.dataset.pick,el.value);renderCalc();return}
   if(el.classList.contains('cell-price'))commitPrice(el);
   else if(el.classList.contains('cell-name'))commitName(el);
   else if(el.classList.contains('cell-kind')){const it=S.items.get(el.dataset.id);if(it){saveItem({...it,kind:el.value,updatedAt:now()});invalidate();render();toast(`Moved ${it.name} to ${KINDS.find(k=>k[0]===el.value)[1]}.`)}}
