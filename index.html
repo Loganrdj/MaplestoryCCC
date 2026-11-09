@@ -99,6 +99,7 @@ tr:last-child td{border-bottom:none}
 th.num,td.num{text-align:right}
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--panel-2)}
+tr.click.on td{background:var(--steel-soft)}
 .ic{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-2);overflow:hidden}
 .ic img{max-width:26px;max-height:26px;image-rendering:pixelated}
 .ic-tile{font-family:var(--font-display);font-weight:600;font-size:12px;color:var(--ink-3)}
@@ -208,6 +209,35 @@ tr.total td{font-weight:700;border-top:1px solid var(--line)}
   .addform input[name=name]{width:100%}
   .sheet{padding:12px}
 }
+
+/* calculator drawer */
+.calc{position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 32px color-mix(in srgb, var(--ink) 12%, transparent);z-index:20;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.calc-head{display:flex;gap:10px;align-items:center;padding:14px 16px;background:var(--steel);color:var(--panel)}
+.calc-head h2{color:var(--panel);font-size:17px;flex:1;min-width:0}
+.calc-head .meta{color:var(--panel);opacity:.8}
+.calc-head .btn{background:transparent;color:var(--panel);border-color:color-mix(in srgb, var(--panel) 45%, transparent)}
+.calc-head .btn:hover{background:color-mix(in srgb, var(--panel) 15%, transparent)}
+.calc-body{flex:1;overflow-y:auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:14px}
+.calc-rows{display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:9px;overflow:hidden}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) 44px 86px 72px;gap:8px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--line-2)}
+.crow:last-child{border-bottom:none}
+.crow.head{background:var(--panel-2);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600;padding:7px 10px}
+.crow .nm{display:flex;align-items:center;gap:7px;min-width:0}
+.crow .nm span.t{overflow-wrap:anywhere;line-height:1.25}
+.crow input{width:100%;text-align:right;font-family:var(--font-num);font-size:12.5px;padding:5px 6px}
+.crow input.changed{border-color:var(--gold);background:var(--gold-soft)}
+.crow input.empty{border-color:var(--warn);background:var(--warn-soft)}
+.crow .num{font-size:12.5px;text-align:right}
+.crow .was{font-size:11px;color:var(--ink-3);text-align:right;grid-column:2 / 5;margin-top:-4px}
+.calc-sum{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-2);border:1px solid var(--line-2);border-radius:9px;overflow:hidden}
+.calc-sum>div{background:var(--panel);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.calc-sum .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+.calc-sum .val{font-family:var(--font-num);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.calc-sum .big{grid-column:1 / -1}
+.calc-sum .big .val{font-size:22px}
+.calc-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.calc-line .field input{width:120px;text-align:right;font-family:var(--font-num)}
+@media (min-width:1300px){body.calc-open .wrap{max-width:none;margin-right:440px;margin-left:0}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
@@ -239,6 +269,8 @@ tr.total td{font-weight:700;border-top:1px solid var(--line)}
     <div class="sheet" id="main"></div>
   </section>
 </div>
+
+<aside class="calc" id="calc" aria-label="Profit calculator" hidden></aside>
 
 <div class="overlay" id="importModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="impTitle">
@@ -450,6 +482,7 @@ function render(){
   else if(UI.tab==='craftable')m.innerHTML=viewCraftable();
   else m.innerHTML=viewRecipes();
   if(fid){const el=document.getElementById(fid);if(el&&el!==document.activeElement){el.focus();if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+  {const ae=document.activeElement;if(!(ae&&ae.tagName==='INPUT'&&CALC.rid&&document.getElementById('calc')?.contains(ae)))renderCalc()}
 }
 function renderStatus(){
   const st=$('#status');
@@ -557,7 +590,7 @@ function viewCraftable(){
     return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="matSort">${[['used','Most used'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.matSort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
     <p class="meta" style="margin:0">Materials you make for other recipes, like ingots and Processed Leather. You don't sell these, so instead of profit this compares the cost of one unit crafted vs bought. Recipes that use them take the cheaper option.</p>
     <div class="tablewrap"><table><thead><tr><th>Material</th><th>Profession</th><th class="num">Craft cost (each)</th><th class="num">Market price (each)</th><th class="num">Crafting saves</th><th>Best option</th><th>Used in</th></tr></thead><tbody>
-    ${rows.map(({r,it,v,used})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
+    ${rows.map(({r,it,v,used})=>`<tr class="click${CALC.rid===r.id?' on':''}" data-act="open-recipe" data-id="${r.id}">
       <td><div class="tname">${icon(r.outputId)}<span class="itemname">${esc(recipeLabel(r))}</span>${yieldOf(r)>1?` <span class="meta">makes ${yieldOf(r)}</span>`:''}</div></td>
       <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
       <td class="num">${v.complete?fmtUnit(v.each):'—'}</td>
@@ -573,7 +606,7 @@ function viewCraftable(){
   rows.sort((a,b)=>key==='name'?(a.it?.name||'').localeCompare(b.it?.name||''):key==='level'?(Number(b.r.level)||0)-(Number(a.r.level)||0):key==='margin'?nv(b.e.margin)-nv(a.e.margin):key==='cost'?a.e.cost-b.e.cost:nv(b.e.profit)-nv(a.e.profit));
   return `${toolbar(`<label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>Sort</span><select id="sort">${[['profit','Profit'],['margin','Margin'],['level','Level (high first)'],['cost','Craft cost'],['name','Name']].map(([v,l])=>`<option value="${v}" ${UI.sort===v?'selected':''}>${l}</option>`).join('')}</select></label>`)}
   <div class="tablewrap"><table><thead><tr><th>Item</th><th>Profession</th><th class="num">Craft cost</th><th class="num">Sells for (each)</th><th class="num">Profit / craft</th><th class="num">Margin</th><th>Status</th></tr></thead><tbody>
-  ${rows.map(({r,it,e})=>`<tr class="click" data-act="open-recipe" data-id="${r.id}">
+  ${rows.map(({r,it,e})=>`<tr class="click${CALC.rid===r.id?' on':''}" data-act="open-recipe" data-id="${r.id}">
     <td><div class="tname">${icon(r.outputId)}<span class="itemname">${esc(recipeLabel(r))}</span>${e.y>1?` <span class="meta">makes ${e.y}</span>`:''}</div></td>
     <td class="meta">${esc(r.profession||'—')} · Lv ${esc(r.level??'—')}</td>
     <td class="num">${fmt(e.cost)}</td>
@@ -676,6 +709,64 @@ function viewEditor(){
   <div class="actions"><button type="button" class="btn" data-act="cancel-edit">Cancel</button><button type="submit" class="btn primary">Save recipe</button></div></form>`;
 }
 
+
+/* ---------- profit calculator drawer ----------
+   What-if prices live only in CALC until the viewer clicks "Save changed prices". */
+const CALC={rid:null,mode:'direct',n:1,txt:new Map(),sellTxt:null,feeTxt:null};
+function calcOpen(rid){if(CALC.rid!==rid){CALC.rid=rid;CALC.txt=new Map();CALC.sellTxt=null;CALC.n=1}renderCalc();
+  try{document.getElementById('calc').querySelector('.calc-body').scrollTop=0}catch(e){}}
+function calcClose(){CALC.rid=null;render()}
+const savedPrice=id=>{const p=S.items.get(id)?.price;return p==null?null:p};
+function craftFallback(id){if(!IDX.byOutput.has(id))return null;const v=unitValue(id);return v.source==='craft'&&v.missing.size===0&&!v.cycle?v.value:null}
+function whatIf(id){if(CALC.txt.has(id)){const v=parseNum(CALC.txt.get(id));return Number.isNaN(v)?null:v}const sp=savedPrice(id);return sp!=null?sp:craftFallback(id)}
+function calcRows(r){const n=Math.max(1,CALC.n|0);
+  if(CALC.mode==='raw'){const plan=materialPlan(r,n,'raw');return {rows:plan.buy.map(b=>({id:b.id,qty:b.qty})),fees:plan.mesos,crafts:plan.crafts}}
+  const m=new Map();for(const i of r.inputs||[])if(!i.optional)m.set(i.itemId,(m.get(i.itemId)||0)+i.qty*n);
+  return {rows:[...m].map(([id,qty])=>({id,qty})),fees:(Number(r.mesos)||0)*n,crafts:[]}}
+function calcNumbers(r){const {rows,fees,crafts}=calcRows(r);let cost=fees,missing=0;
+  for(const x of rows){x.price=whatIf(x.id);x.total=x.price==null?null:x.price*x.qty;if(x.price==null)missing++;else cost+=x.total}
+  const n=Math.max(1,CALC.n|0),y=yieldOf(r),units=n*y;
+  const sellV=CALC.sellTxt!=null?parseNum(CALC.sellTxt):savedPrice(r.outputId);const sell=Number.isNaN(sellV)?null:sellV;
+  const feeV=CALC.feeTxt!=null?parseFloat(CALC.feeTxt):Number(S.settings.feePct)||0;const fee=Math.min(100,Math.max(0,isFinite(feeV)?feeV:0))/100;
+  const revenue=sell==null?null:sell*units*(1-fee);const profit=revenue==null||missing?null:revenue-cost;
+  const breakEven=missing||fee>=1?null:cost/(units*(1-fee));
+  return {rows,fees,crafts,cost,missing,units,sell,fee,revenue,profit,margin:profit!=null&&cost>0?profit/cost:null,perCraft:profit==null?null:profit/n,breakEven}}
+function renderCalc(){const el=document.getElementById('calc');if(!el)return;const r=CALC.rid&&S.recipes.get(CALC.rid);
+  document.body.classList.toggle('calc-open',!!r);if(!r){el.hidden=true;el.innerHTML='';return}
+  const a=document.activeElement,fid=a&&el.contains(a)?a.id:null,sel=fid&&typeof a.selectionStart==='number'?[a.selectionStart,a.selectionEnd]:null;
+  const it=S.items.get(r.outputId);const c=calcNumbers(r);const changed=[...CALC.txt.keys()].filter(id=>{const v=whatIf(id);return v!=null&&v!==savedPrice(id)});
+  const sellChanged=CALC.sellTxt!=null&&c.sell!=null&&c.sell!==savedPrice(r.outputId);
+  const priceIn=(id,qty,price,total)=>{const sp=savedPrice(id);const cf=sp==null&&!CALC.txt.has(id)?craftFallback(id):null;const txt=CALC.txt.has(id)?CALC.txt.get(id):(sp!=null?fmt(sp):cf!=null?fmtUnit(cf):'');const ch=CALC.txt.has(id)&&price!=null&&price!==sp;
+    return `<div class="crow"><div class="nm">${icon(id)}<span class="t" title="${esc(itemName(id))}">${esc(itemName(id))}</span></div><div class="num">${fmtQty(qty)}</div>
+      <input id="cp-${id}" data-cp="${id}" value="${esc(txt)}" placeholder="Price" inputmode="decimal" class="${ch?'changed':price==null?'empty':''}" aria-label="Price of ${esc(itemName(id))}">
+      <div class="num">${total==null?'—':fmt(total)}</div>${ch?`<div class="was">saved ${sp==null?'none':fmt(sp)}</div>`:cf!=null?`<div class="was">no market price · your craft cost</div>`:''}</div>`};
+  el.hidden=false;
+  el.innerHTML=`<div class="calc-head">${icon(r.outputId,'ic-lg')}<div style="flex:1;min-width:0"><h2>${esc(it?.name)}</h2><div class="meta">${esc(r.profession||'')} · Lv ${esc(r.level??'—')}${yieldOf(r)>1?` · makes ${yieldOf(r)}`:''}</div></div>
+    <button class="btn small" data-act="calc-close" aria-label="Close calculator">Close</button></div>
+  <div class="calc-body">
+    <div class="calc-line"><div class="filters" role="group" aria-label="What to buy"><button class="filter" aria-pressed="${CALC.mode==='direct'}" data-act="calc-mode" data-mode="direct">Buy the parts</button><button class="filter" aria-pressed="${CALC.mode==='raw'}" data-act="calc-mode" data-mode="raw">Buy raw, craft the rest</button></div></div>
+    <div class="calc-line"><span class="meta">Crafts</span><div class="stepper"><button data-act="calc-n" data-d="-1" aria-label="Fewer crafts">−</button><input type="number" id="calcN" min="1" value="${CALC.n}" aria-label="Number of crafts"><button data-act="calc-n" data-d="1" aria-label="More crafts">+</button></div>
+      <button class="btn small ghost" data-act="calc-full" data-id="${r.id}" style="margin-left:auto">Full recipe</button></div>
+    <div class="calc-rows"><div class="crow head"><span>Buy</span><span style="text-align:right">Qty</span><span style="text-align:right">Price each</span><span style="text-align:right">Total</span></div>
+      ${c.rows.map(x=>priceIn(x.id,x.qty,x.price,x.total)).join('')||'<div class="crow"><span class="meta">Nothing to buy.</span></div>'}
+      <div class="crow"><div class="nm"><span class="coin"></span><span class="t">Crafting fees${c.crafts.length?` (${c.crafts.length+1} steps)`:''}</span></div><div></div><div></div><div class="num">${fmt(c.fees)}</div></div></div>
+    ${c.crafts.length?`<div class="meta">You craft: ${c.crafts.map(x=>`${esc(itemName(x.id))} ×${fmtQty(x.made)}`).join(', ')}</div>`:''}
+    <div class="calc-line"><label class="field"><span>Sell price each</span><input id="calcSell" value="${esc(CALC.sellTxt!=null?CALC.sellTxt:(c.sell==null?'':fmt(c.sell)))}" placeholder="Set price" inputmode="decimal" class="${sellChanged?'changed':''}"></label>
+      <label class="field"><span>Sale fee %</span><input id="calcFee" type="number" min="0" max="100" step="0.5" style="width:80px" value="${esc(CALC.feeTxt!=null?CALC.feeTxt:(S.settings.feePct??0))}"></label></div>
+    <div class="calc-sum">
+      <div><span class="label">Cost to buy${CALC.n>1?` (${CALC.n} crafts)`:''}</span><span class="val"><span class="coin"></span>${c.missing?'—':fmt(c.cost)}</span></div>
+      <div><span class="label">Sells for${c.fee?' after fee':''}</span><span class="val"><span class="coin"></span>${c.revenue==null?'—':fmt(c.revenue)}</span></div>
+      <div class="big"><span class="label">Profit${CALC.n>1?` (${fmt(c.perCraft)} per craft)`:''}</span><span class="val ${c.profit==null?'':c.profit>=0?'pos':'neg'}">${signed(c.profit)}</span></div>
+      <div><span class="label">Margin</span><span class="val ${c.margin==null?'':c.margin>=0?'pos':'neg'}">${fmtPct(c.margin)}</span></div>
+      <div><span class="label">Break-even sell price</span><span class="val">${c.breakEven==null?'—':fmt(Math.ceil(c.breakEven))}</span></div>
+    </div>
+    ${c.missing?`<div class="notice">${c.missing} item${c.missing>1?'s need':' needs'} a price before profit can be worked out.</div>`:''}
+    <div class="actions"><button class="btn" data-act="calc-reset" ${CALC.txt.size||CALC.sellTxt!=null||CALC.feeTxt!=null?'':'disabled'}>Reset to saved</button>
+      <button class="btn primary" data-act="calc-save" ${changed.length||sellChanged?'':'disabled'}>Save ${changed.length+(sellChanged?1:0)||''} changed price${changed.length+(sellChanged?1:0)===1?'':'s'}</button></div>
+    <p class="meta" style="margin:0">Prices you type here are a what-if: they don’t change your saved prices until you click Save.</p>
+  </div>`;
+  if(fid){const f=document.getElementById(fid);if(f){f.focus();if(sel&&f.setSelectionRange)try{f.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+}
 /* ---------- actions ---------- */
 function setTab(t){UI.tab=t;UI.confirm=null;try{history.replaceState(null,'','#'+t)}catch(e){location.hash=t}render()}
 function commitPrice(el){
@@ -715,8 +806,16 @@ function saveDraft(){
 }
 const ACT={
   tab:t=>setTab(t.dataset.tab),
-  'open-recipe':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.qty=1;setTab('recipes')},
-  'sel-recipe':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.confirm=null;UI.qty=1;render()},
+  'open-recipe':t=>{UI.sel=t.dataset.id;if(CALC.rid!==t.dataset.id){CALC.rid=t.dataset.id;CALC.txt=new Map();CALC.sellTxt=null;CALC.n=1}render()},
+  'calc-close':()=>calcClose(),
+  'calc-mode':t=>{CALC.mode=t.dataset.mode;renderCalc()},
+  'calc-n':t=>{CALC.n=Math.max(1,(CALC.n|0)+ +t.dataset.d);renderCalc()},
+  'calc-full':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.qty=1;setTab('recipes')},
+  'calc-reset':()=>{CALC.txt=new Map();CALC.sellTxt=null;CALC.feeTxt=null;renderCalc()},
+  'calc-save':()=>{const r=S.recipes.get(CALC.rid);let k=0;for(const id of CALC.txt.keys()){const v=whatIf(id);const it=S.items.get(id);if(it&&v!=null&&v!==it.price){saveItem({...it,price:v,sample:false,priceSource:null,updatedAt:now()});k++}}
+    if(r&&CALC.sellTxt!=null){const v=parseNum(CALC.sellTxt);const it=S.items.get(r.outputId);if(it&&!Number.isNaN(v)&&v!=null&&v!==it.price){saveItem({...it,price:v,sample:false,priceSource:null,updatedAt:now()});k++}}
+    CALC.txt=new Map();CALC.sellTxt=null;invalidate();render();toast(`Saved ${k} price${k===1?'':'s'}.`)},
+  'sel-recipe':t=>{UI.sel=t.dataset.id;UI.draft=null;UI.confirm=null;UI.qty=1;render();calcOpen(t.dataset.id)},
   'new-recipe':()=>{UI.draft=blankDraft();UI.draftErr='';if(UI.tab!=='recipes')setTab('recipes');else render()},
   'edit-recipe':t=>{UI.draft=draftFrom(S.recipes.get(t.dataset.id));UI.draftErr='';render()},
   'cancel-edit':()=>{UI.draft=null;UI.draftErr='';render()},
@@ -785,6 +884,10 @@ document.addEventListener('change',e=>{const el=e.target;
   else if(el.dataset.rf==='optional'&&UI.draft){UI.draft.inputs[+el.dataset.row].optional=el.checked}
 });
 document.addEventListener('input',e=>{const el=e.target;
+  if(el.dataset&&el.dataset.cp){CALC.txt.set(el.dataset.cp,el.value);renderCalc();return}
+  if(el.id==='calcSell'){CALC.sellTxt=el.value;renderCalc();return}
+  if(el.id==='calcFee'){CALC.feeTxt=el.value;renderCalc();return}
+  if(el.id==='calcN'){CALC.n=Math.max(1,parseInt(el.value)||1);renderCalc();return}
   if(el.id==='rawQ'){UI.rawQ=el.value;render()}
   else if(el.id==='craftQ'){UI.craftQ=el.value;render()}
   else if(el.id==='recQ'){UI.recQ=el.value;render()}
@@ -793,7 +896,7 @@ document.addEventListener('input',e=>{const el=e.target;
 });
 document.addEventListener('keydown',e=>{const el=e.target;
   if(e.key==='Enter'&&(el.classList?.contains('cell-price')||el.classList?.contains('cell-name'))){e.preventDefault();el.blur()}
-  if(e.key==='Escape'){if(!$('#importModal').hidden){$('#importModal').hidden=true}else if(el.classList?.contains('cell-price')){const it=S.items.get(el.dataset.id);el.value=it?.price==null?'':fmt(it.price);el.blur()}}
+  if(e.key==='Escape'){if(!$('#importModal').hidden){$('#importModal').hidden=true}else if(CALC.rid&&!el.classList?.contains('cell-price')){calcClose()}else if(el.classList?.contains('cell-price')){const it=S.items.get(el.dataset.id);el.value=it?.price==null?'':fmt(it.price);el.blur()}}
 });
 $('#importModal').addEventListener('click',e=>{if(e.target.id==='importModal')$('#importModal').hidden=true});
 

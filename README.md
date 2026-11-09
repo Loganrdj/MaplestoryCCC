@@ -11,6 +11,7 @@ A crafting cost and profit calculator for MapleStory Classic. Enter what materia
 - **Recipes** – a cost breakdown you can expand down to raw materials, plus a materials list for any number of crafts:
   - *Craft from raw* – everything made yourself, down to ores and drops.
   - *Cheapest plan* – buys any part that's cheaper to buy.
+- **Profit calculator** – click any item to open a calculator on the right. Change material and sell prices freely to see cost, profit, margin and break-even price, buying either the parts or the raw materials. What-if prices aren't saved unless you click **Save**.
 - **Filters** – by profession and profession level (1–10).
 - **Multiple recipes per item** – e.g. Processed Leather from Leather, Jr. Necki Skin, Ligator Skin or Croco Skin. The cheapest one is used.
 - **Import / export** – recipe CSVs, price lists (`name,price`), and JSON backups.
