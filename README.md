@@ -38,6 +38,12 @@ Prices save automatically in that browser as you type them, and they're still th
 
 `catalog.js` and `prices.js` hold the same data as `catalog.json` and `prices.json`. They're scripts so the page works when opened straight from the folder. Served over HTTP (for example GitHub Pages), the page works either way.
 
+### Deploying to Netlify
+
+`netlify.toml` is set up for a static deploy (no build command, publish the repo root). In Netlify: **Add new site → Import an existing project → GitHub → MaplestoryCCC → Deploy**. Every push to `main` redeploys.
+
+Prices saved on the deployed site live in that browser for that site address, separately from the copy you open from the folder.
+
 ## How costs are calculated
 
 - **Craft cost** = mesos fee + the sum of each required item × its unit cost.

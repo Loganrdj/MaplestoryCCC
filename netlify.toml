@@ -1,0 +1,10 @@
+# Static site: no build step, serve the repo root.
+[build]
+  publish = "."
+  command = ""
+
+# Always check for a newer version, so a fresh deploy shows up on the next refresh.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
