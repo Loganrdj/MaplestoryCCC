@@ -263,6 +263,7 @@ tr.total td{font-weight:700;border-top:1px solid var(--line)}
       <label class="field"><span>Sale fee %</span>
         <input type="number" id="feePct" min="0" max="100" step="0.5" style="width:90px" value="0">
       </label>
+      <button class="btn primary" data-act="mkt-open">Update prices</button>
       <button class="btn" id="fsBtn" data-act="fs" hidden>Save to folder</button>
       <button class="btn" data-act="open-import">Import</button>
       <button class="btn" data-act="export">Export backup</button>
@@ -305,6 +306,12 @@ Bronze Guardian,Weaponcrafting,7,1,9000,,Screw,21,</pre></div>
 Bronze Ingot,1500
 Processed Leather,300</pre></div>
     </div>
+  </div>
+</div>
+<div class="overlay" id="mktModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mktTitle" style="width:min(860px,100%)">
+    <div class="actions"><h2 id="mktTitle">Update prices from the market</h2><button class="btn ghost" data-act="mkt-close">Close</button></div>
+    <div id="mktBody"></div>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -495,7 +502,7 @@ function renderStatus(){
   const raws=rawItems().length,crafts=activeRecipes().length;
   const where=S.mode==='db'?(S.stale?'<span class="dot local"></span>Saved data can’t be reached right now; showing what loaded':'<span class="dot"></span>Saved to this artifact'):'<span class="dot local"></span>Saving in this browser only';
   const priced=[...S.items.values()].filter(i=>i.price!=null&&i.priceSource!=='npc'&&!IDX.byOutput.has(i.id)).length;
-  st.innerHTML=`${where}<span>·</span><span>${raws} raw materials (${priced} with your prices)</span><span>·</span><span>${crafts} recipes</span>${catalogInfo?`<span>·</span><span>Game data from metaroad.gg</span>`:''}<span>·</span><span>Icons from <a href="https://osmsdataexplorer.com" target="_blank" rel="noopener">OSMS Data Explorer</a> (CC BY 4.0)</span>`;
+  st.innerHTML=`${where}<span>·</span><span>${raws} raw materials (${priced} with your prices)</span><span>·</span><span>${crafts} recipes</span>${catalogInfo?`<span>·</span><span>Game data from metaroad.gg</span>`:''}${[...S.items.values()].some(i=>i.priceSource==='market')?'<span>·</span><span>Market prices from <a href="https://maplestory-classic.com/market" target="_blank" rel="noopener">maplestory-classic.com</a></span>':''}<span>·</span><span>Icons from <a href="https://osmsdataexplorer.com" target="_blank" rel="noopener">OSMS Data Explorer</a> (CC BY 4.0)</span>`;
 }
 const activeRecipes=()=>[...S.recipes.values()].filter(r=>!S.items.get(r.outputId)?.asRaw);
 function rawItems(){return [...S.items.values()].filter(i=>!IDX.byOutput.has(i.id))}
@@ -509,7 +516,7 @@ function emptyState(){
   return `<div class="empty"><h2>Your crafting ledger is empty</h2><p>Add raw materials with their prices, then add recipes that use them. Each recipe shows its craft cost, sale price and profit.</p>
   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="load-example">Add the Bronze Guardian recipe</button><button class="btn" data-act="open-import">Import recipes</button><button class="btn" data-act="new-recipe">New recipe</button></div></div>`;
 }
-function exampleChip(it){return it&&it.sample?'<span class="chip example" title="Example price — set your own">example</span>':it&&it.priceSource==='npc'?'<span class="chip" title="Price from the NPC shop — type a market price to replace it">NPC shop</span>':''}
+function exampleChip(it){return it&&it.sample?'<span class="chip example" title="Example price — set your own">example</span>':it&&it.priceSource==='market'?`<span class="chip steel" title="Typical market price from maplestory-classic.com${it.marketAt?' ('+new Date(it.marketAt).toLocaleDateString()+')':''}">market</span>`:it&&it.priceSource==='npc'?'<span class="chip" title="Price from the NPC shop — type a market price to replace it">NPC shop</span>':''}
 function npcInfo(i){const a=[];if(i.npcBuy!=null)a.push(`NPC sells ${fmt(i.npcBuy)}`);if(i.vendorSell!=null)a.push(`vendor buys ${fmt(i.vendorSell)}`);return a.length?`<span class="meta">${a.join(' · ')}</span>`:'<span class="meta">—</span>'}
 
 function viewRaw(){
@@ -715,6 +722,50 @@ function viewEditor(){
 }
 
 
+
+/* ---------- market price updates ----------
+   Typical prices come from maplestory-classic.com/market.json (updated daily). The browser fetches it directly;
+   if the site doesn't allow that, it goes through this site's Netlify function, which fetches and caches the file. */
+const MARKET_URL='https://maplestory-classic.com/market.json';
+const MARKET_PROXY='https://maplestoryccc.netlify.app/.netlify/functions/market';
+const MKT={state:'idle',data:null,err:'',rows:[],pick:new Set(),q:'',show:'changed'};
+async function fetchMarket(){const routes=[MARKET_URL,/netlify\.app$/.test(location.hostname)?'/.netlify/functions/market':MARKET_PROXY];let last;
+  for(const u of routes){try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(!j||!Array.isArray(j.items))throw new Error('Unexpected file');return j}catch(e){last=e}}
+  throw last}
+function marketRows(d){const by=new Map();for(const m of d.items){if(m&&m.n&&m.p>0)by.set(norm(m.n),m)}
+  const low=Number(d.lowDataBelow)||0;const rows=[];
+  for(const it of S.items.values()){const m=by.get(norm(it.name));if(!m)continue;const np=Math.round(m.p);const cur=it.price;
+    const diff=cur==null?null:(np-cur)/Math.max(1,cur);const few=(Number(m.sold)||0)<low;
+    rows.push({id:it.id,name:it.name,cur,np,lo:m.p25,hi:m.p75,sold:m.sold,few,diff,same:cur!=null&&Math.round(cur)===np,used:(IDX.usedBy.get(it.id)||[]).length+(IDX.byOutput.has(it.id)?1:0)})}
+  rows.sort((a,b)=>(a.same-b.same)||((b.cur==null)-(a.cur==null))||Math.abs(b.diff||0)-Math.abs(a.diff||0)||a.name.localeCompare(b.name));
+  return rows}
+async function mktOpen(){$('#mktModal').hidden=false;MKT.state='loading';MKT.err='';renderMkt();
+  try{MKT.data=await fetchMarket();MKT.rows=marketRows(MKT.data);MKT.pick=new Set(MKT.rows.filter(r=>!r.same&&!r.few).map(r=>r.id));MKT.state='ready'}
+  catch(e){MKT.state='error';MKT.err=window.claude?'This view can’t reach other websites. Open the calculator from your folder or maplestoryccc.netlify.app to update prices.':'Couldn’t download market prices. Check your connection and try again.'}
+  renderMkt()}
+function renderMkt(){const b=$('#mktBody');if(!b)return;
+  if(MKT.state==='loading'){b.innerHTML='<p class="meta">Downloading today’s typical prices…</p>';return}
+  if(MKT.state==='error'){b.innerHTML=`<div class="notice bad">${esc(MKT.err)}</div><div><button class="btn" data-act="mkt-open">Try again</button></div>`;return}
+  const rows=MKT.rows;const q=norm(MKT.q);
+  const shown=rows.filter(r=>(MKT.show==='all'||!r.same)&&(!q||norm(r.name).includes(q)));
+  const nPick=[...MKT.pick].filter(id=>rows.some(r=>r.id===id)).length;
+  const upd=MKT.data.updatedAt?new Date(MKT.data.updatedAt).toLocaleString():'unknown';
+  b.innerHTML=`<p class="meta" style="margin:0">Typical sale prices from <a href="https://maplestory-classic.com/market" target="_blank" rel="noopener">maplestory-classic.com</a>, updated ${esc(upd)}. ${rows.length} of your items have a market price. Tick the ones to update; the rest keep your price.</p>
+    <div class="toolbar"><div class="left"><input type="search" class="search" id="mktQ" placeholder="Search items" value="${esc(MKT.q)}" aria-label="Search items">
+      <div class="filters"><button class="filter" aria-pressed="${MKT.show==='changed'}" data-act="mkt-show" data-show="changed">Different from yours</button><button class="filter" aria-pressed="${MKT.show==='all'}" data-act="mkt-show" data-show="all">All matched</button></div></div>
+      <div class="right"><button class="btn small ghost" data-act="mkt-all">Tick all shown</button><button class="btn small ghost" data-act="mkt-none">Untick all</button></div></div>
+    <div class="tablewrap" style="max-height:52vh;overflow:auto"><table style="min-width:600px"><thead><tr><th></th><th>Item</th><th class="num">Your price</th><th class="num">Market typical</th><th class="num">Usual range</th><th class="num">Change</th></tr></thead><tbody>
+    ${shown.map(r=>`<tr><td><input type="checkbox" id="mk-${r.id}" data-mk="${r.id}" ${MKT.pick.has(r.id)?'checked':''} aria-label="Update ${esc(r.name)}"></td>
+      <td><label for="mk-${r.id}" class="tname" style="cursor:pointer">${icon(r.id)}<span>${esc(r.name)}</span>${r.few?' <span class="chip warn" title="Few recent sales, so this price is less reliable">few sales</span>':''}</label></td>
+      <td class="num">${r.cur==null?'<span class="meta">none</span>':fmt(r.cur)}</td><td class="num">${fmt(r.np)}</td>
+      <td class="num meta">${r.lo!=null&&r.hi!=null?fmt(r.lo)+'–'+fmt(r.hi):'—'}</td>
+      <td class="num">${r.same?'same':r.diff==null?'new':(r.diff>0?'+':'')+Math.round(r.diff*100)+'%'}</td></tr>`).join('')||'<tr><td colspan="6" class="meta">Nothing to show.</td></tr>'}
+    </tbody></table></div>
+    <div class="actions"><span class="meta">Updated prices are marked “market” and save like any price you type.</span><button class="btn primary" data-act="mkt-apply" ${nPick?'':'disabled'}>Update ${nPick} price${nPick===1?'':'s'}</button></div>`;
+  const f=document.getElementById('mktQ');if(f&&MKT.focusQ){f.focus();f.setSelectionRange(f.value.length,f.value.length)}}
+function mktApply(){let k=0;const at=MKT.data.updatedAt||now();
+  for(const r of MKT.rows){if(!MKT.pick.has(r.id))continue;const it=S.items.get(r.id);if(!it)continue;saveItem({...it,price:r.np,sample:false,priceSource:'market',marketAt:at,updatedAt:now()});k++}
+  invalidate();render();$('#mktModal').hidden=true;toast(`Updated ${k} price${k===1?'':'s'} from the market.`)}
 /* ---------- profit calculator drawer ----------
    What-if prices live only in CALC until the viewer clicks "Save changed prices". */
 const CALC={rid:null,mode:'direct',n:1,txt:new Map(),pick:new Map(),sellTxt:null,feeTxt:null};
@@ -874,6 +925,12 @@ const ACT={
   'set-role':t=>{const it=S.items.get(t.dataset.id);if(!it)return;saveItem({...it,role:t.dataset.role,updatedAt:now()});invalidate();toast(t.dataset.role==='material'?`${it.name} moved to Crafting materials.`:`${it.name} moved to Items to sell.`);render()},
   'raw-kind':t=>{UI.rawKind=t.dataset.kind;render()},
   'goto-raw':t=>{UI.rawQ=t.dataset.name;setTab('raw')},
+  'mkt-open':()=>mktOpen(),
+  'mkt-close':()=>{$('#mktModal').hidden=true},
+  'mkt-show':t=>{MKT.show=t.dataset.show;renderMkt()},
+  'mkt-all':()=>{const q=norm(MKT.q);MKT.rows.filter(r=>(MKT.show==='all'||!r.same)&&(!q||norm(r.name).includes(q))).forEach(r=>MKT.pick.add(r.id));renderMkt()},
+  'mkt-none':()=>{MKT.pick.clear();renderMkt()},
+  'mkt-apply':()=>mktApply(),
   'open-import':()=>{$('#importModal').hidden=false;$('#importMsg').textContent='';$('#shotBox').hidden=!SAMPLE;setTimeout(()=>$('#importText').focus(),0)},
   'close-import':()=>{$('#importModal').hidden=true},
   'fill-example':()=>{$('#importText').value=EXAMPLE_CSV},
@@ -896,6 +953,7 @@ document.addEventListener('submit',e=>{e.preventDefault();
   if(e.target.id==='recipeForm')saveDraft();
 });
 document.addEventListener('change',e=>{const el=e.target;
+  if(el.dataset&&el.dataset.mk){el.checked?MKT.pick.add(el.dataset.mk):MKT.pick.delete(el.dataset.mk);renderMkt();return}
   if(el.dataset&&el.dataset.pick){CALC.pick.set(el.dataset.pick,el.value);renderCalc();return}
   if(el.classList.contains('cell-price'))commitPrice(el);
   else if(el.classList.contains('cell-name'))commitName(el);
@@ -913,6 +971,7 @@ document.addEventListener('change',e=>{const el=e.target;
   else if(el.dataset.rf==='optional'&&UI.draft){UI.draft.inputs[+el.dataset.row].optional=el.checked}
 });
 document.addEventListener('input',e=>{const el=e.target;
+  if(el.id==='mktQ'){MKT.q=el.value;MKT.focusQ=true;renderMkt();MKT.focusQ=false;return}
   if(el.dataset&&el.dataset.cp){CALC.txt.set(el.dataset.cp,el.value);renderCalc();return}
   if(el.id==='calcSell'){CALC.sellTxt=el.value;renderCalc();return}
   if(el.id==='calcFee'){CALC.feeTxt=el.value;renderCalc();return}
@@ -925,9 +984,10 @@ document.addEventListener('input',e=>{const el=e.target;
 });
 document.addEventListener('keydown',e=>{const el=e.target;
   if(e.key==='Enter'&&(el.classList?.contains('cell-price')||el.classList?.contains('cell-name'))){e.preventDefault();el.blur()}
-  if(e.key==='Escape'){if(!$('#importModal').hidden){$('#importModal').hidden=true}else if(CALC.rid&&!el.classList?.contains('cell-price')){calcClose()}else if(el.classList?.contains('cell-price')){const it=S.items.get(el.dataset.id);el.value=it?.price==null?'':fmt(it.price);el.blur()}}
+  if(e.key==='Escape'){if(!$('#mktModal').hidden){$('#mktModal').hidden=true}else if(!$('#importModal').hidden){$('#importModal').hidden=true}else if(CALC.rid&&!el.classList?.contains('cell-price')){calcClose()}else if(el.classList?.contains('cell-price')){const it=S.items.get(el.dataset.id);el.value=it?.price==null?'':fmt(it.price);el.blur()}}
 });
 $('#importModal').addEventListener('click',e=>{if(e.target.id==='importModal')$('#importModal').hidden=true});
+$('#mktModal').addEventListener('click',e=>{if(e.target.id==='mktModal')$('#mktModal').hidden=true});
 
 /* ---------- import / export ---------- */
 function parseCSV(text){const rows=[];let row=[],f='',q=false;

@@ -11,6 +11,7 @@ A crafting cost and profit calculator for MapleStory Classic. Enter what materia
 - **Recipes** – a cost breakdown you can expand down to raw materials, plus a materials list for any number of crafts:
   - *Craft from raw* – everything made yourself, down to ores and drops.
   - *Cheapest plan* – buys any part that's cheaper to buy.
+- **Update prices** – downloads today's typical Free Market prices from [maplestory-classic.com](https://maplestory-classic.com/market) (updated daily), shows which of your prices differ, and updates only the ones you tick. Items with few recent sales start unticked. If the browser can't download the file directly, it goes through the site's Netlify function (`netlify/functions/market.mjs`), which caches it for an hour.
 - **Profit calculator** – click any item to open a calculator on the right. Change material and sell prices freely to see cost, profit, margin and break-even price, buying either the parts or the raw materials. Any part with more than one recipe (Processed Leather, ingots, Screws…) has a dropdown to buy it or pick which recipe to craft it with, e.g. Processed Leather from Jr. Necki Skin instead of Leather. What-if prices aren't saved unless you click **Save**.
 - **Filters** – by profession and profession level (1–10).
 - **Multiple recipes per item** – e.g. Processed Leather from Leather, Jr. Necki Skin, Ligator Skin or Croco Skin. The cheapest one is used.
